@@ -1,0 +1,22 @@
+
+code, kbd, pre, samp {
+    font-family: SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+}
+
+code {
+    font-size: 87.5%;
+    color: #e83e8c;
+    word-break: break-word;
+  }
+.code-block {
+    border-color: #e987b4;
+    border-width: 1px;
+    border-style: solid;
+    background-color: #fffbfd;
+  }
+
+.json_key { color: #000; }
+.json_number { color: darkred;}
+.json_string{ color: darkgreen;}
+.json_bool{ color: blue; }
+.json_null{ color: #888;}

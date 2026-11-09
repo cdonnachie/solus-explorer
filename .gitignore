@@ -1,0 +1,26 @@
+# exclude in vendor derectory
+/vendor
+/script/tmp/*
+!/script/tmp/.dummy
+#exclude .DS_Store
+**/.DS_Store
+._*
+**/._*
+*.bak
+*.prev
+*_bak.*
+*-old.php
+* copy*
+
+# editor settings
+/.vscode/
+/.idea/
+
+# local configuration, copy from settings/settings.php.example*
+/settings.php
+
+# operator-supplied third-party tags (e.g. the CMP tag, see cmp_script)
+/public/js/local/
+
+# loader output when cron redirects it (docs/installation.md section 11)
+/script/*.log

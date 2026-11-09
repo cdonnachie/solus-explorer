@@ -1,0 +1,194 @@
+<?php
+// Template for an asset-enabled proof-of-work chain (Ravencoin family).
+// Copy to the repository root as settings.php and fill in the empty values.
+// Full reference: docs/configuration.md
+    global $settings;
+    $settings = [
+    // Database
+        "db_type"       => "mongodb",       // only mongodb is supported
+        "db_protocol"   => "mongodb",       // URI scheme for the Mongo driver
+        "db_host"       => "127.0.0.1",
+        "db_port"       => 27017,
+        "db_user"       => "",              // user with readWrite on db_name
+        "db_pass"       => "",
+        "db_name"       => "examplengexdb",
+        //"db_opts"     => ["replicaSet" => "rs0"], // extra driver options
+
+    // Daemon RPC (must match rpcuser/rpcpassword/rpcport of the daemon)
+        "rpc_protocol"  => "http",
+        "rpc_host"      => "127.0.0.1",
+        "rpc_port"      => "8766",
+        "rpc_user"      => "",
+        "rpc_pass"      => "",
+
+    // Chain definition
+        "genesis_block" => "",              // output of `<coin>-cli getblockhash 0`
+        "base58"        => ["nw_bytes" => "3c", "prefix" => "R", "alphabet" => "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"], // P2PKH address rendering
+        "segwit"        => ["supported" => false, "bech32_prefix" => "", "bech32_separator" => 1],
+        "coin_symbol"   => "EXAMPLE",       // ticker
+        "coin_name"     => "Example",       // human-readable name; falls back to the upper-case symbol
+        "maturity"      => 100,             // coinbase maturity in blocks, also the "synced" threshold
+
+    // Zerocoin (only for chains that had it)
+        "z_supply_mark" => "zEXAMPLEsupply", // property name of the zerocoin supply in getblock/getinfo
+        "z_txid"        => "0000000000000000000000000000000000000000000000000000000000000000", // vin txid marking a zerocoin spend
+
+    // Loader
+        "timezone"              => "UTC",
+        "supply_chart_source"   => "coincirculation", // coincirculation (computed by the explorer) or coinsupply (reported by the daemon)
+        "block_schemes" => [                // reward layouts, see docs/configuration.md
+            "PoW" => [],
+            //"PoW+DEV" => ["DEV_vout" => "last", "DEV_wallets" => ["<dev fee address>"]],
+        ],
+        "loader_random_delay"       => true,    // sleep 0-10 s before each run to de-synchronise several coins on one host
+        "processing_precision"      => 8,       // decimal places of amounts written to the database
+        "arbitrary_precision"       => 21,      // significant digits of the Decimal type
+        "market_precision"          => 8,       // decimal places of VWAP
+        "storage_improvement"       => true,    // do not store movements in blocks and drop spent outputs; leave on
+        "rollback_depth"            => 50001,   // blocks of rollback data kept for reorgs; 0 makes reorgs unrecoverable
+        "loader_timeout_sec"        => 115,     // pid files older than this are treated as stale
+        "pidfile_update_interval"   => 5,       // seconds between pid file refreshes
+        "log_record_timeout_sec"    => 86400,   // TTL of LOADERLOG records (baked into the index)
+        "calculate_chain_stats"     => true,    // daily CHAINSTATS buckets for the stats page
+        "stop_on_missing_vins"      => false,   // abort on an unresolved input instead of logging it (debug aid)
+        "debug_enabled"             => false,   // verbose loader output and ad-slot logging in the browser console
+
+        "burn_addresses" => [               // addresses and script types whose balance counts as burned
+            "Fee Collector",
+            "nulldata",
+            "nullassetdata",
+            // the chain's asset burn addresses, e.g. the issue, reissue, sub-asset, unique, tag and global burn addresses
+        ],
+
+    // Daemon methods
+        "getinfo_method"        => "getnetworkinfo",    // getnetworkinfo (Bitcoin Core 0.16+) or getinfo (old daemons)
+        "getchainsync_method"   => "getblockchaininfo", // getblockchaininfo or mnsync (Dash family)
+        "gethashps_multiplier"  => 1.0,                 // scales getnetworkhashps for daemons reporting another unit
+
+    // Masternodes
+        "list_masternodes_method"   => "!listmasternodes", // a leading "!" disables the masternode list
+        "masternode_collateral"     => 0,
+        "dip2_support"              => false,   // decode ProRegTx, ProUpServTx and other DIP2 special transactions
+        "show_dip2"                 => false,
+
+    // Site
+        "explorer_address"  => "",          // public base URL without trailing slash (https://host or https://host/prefix); "" derives it from the request
+        "cookie_domain"     => "localhost", // host name of the explorer, used for the admin cookie and canonical URLs
+        "cookie_path"       => "",          // "" for a plain host, "/<prefix>" behind a path prefix
+        "title"             => "Example Explorer",
+        "meta_keywords"     => "example, blocks, explorer, blockchain",
+        "meta_description"  => "Block explorer for the Example chain: blocks, transactions, addresses, markets and statistics.",
+        "is_oem"            => false,       // true removes the explorer's own branding from meta tags and titles
+
+    // Appearance
+        "favicon_path"      => "img/favicon.ico",   // relative to public/
+        "logo_image"        => "logo.svg",          // file in public/img/
+        "logo_height"       => "",                  // CSS size, default 49px
+        "logo_width"        => "",                  // CSS size, default 130px
+        "theme_stylesheet"  => "style-n.css",       // file in public/css/
+        "explorer_skin"     => "solus-skin",        // body class, keep as is
+        "nav_image"         => "img/navback_hex_hd.jpg", // side menu background
+        "chart_colors"      => ["#2f6c90", "#3f799c", "#4e86a8", "#5c93b5", "#6ba0c1", "#79adce", "#88bbda", "#96c9e7", "#a5d7f4"],
+        "named_colors"      => ["danger" => "#d34f5c", "warning" => "#f5ca4a", "success" => "#42a759", "info" => "#79b8c2", "primary" => "#3d799c", "secondary" => "#6c757d", "light" => "#f8f9fa", "dark" => "#3c1c38"],
+        "amcharts_license_key" => "",      // commercial amCharts 4 license key; empty keeps the free-license chart logo
+
+        // FontAwesome icons
+        "op_return_symbol"      => "far fa-comment-dots",
+        "dev_symbol"            => "fas fa-cog",
+        "spow_symbol"           => "fas fa-sun",
+        "mnops_symbol"          => "fas fa-server",
+        "dip2_symbol"           => "fas fa-envelope-open-text",
+        "coldstake_symbol"      => "far fa-snowflake",
+        "asset_message_symbol"  => "far fa-comment-alt",
+        "airdrop_symbol"        => "fas fa-hand-holding-water",
+
+        // Footer and menu
+        "copyright_enabled" => true,
+        "copyright_message" => 'Example Explorer.&nbsp;©&nbsp;!#CY#!', // footer HTML; !#CY#! becomes the year range
+        "show_socials"      => false,
+        "social_buttons"    => [            // ["icon" => "fab fa-github", "title" => "GitHub", "href" => "https://..."]
+        ],
+        "custom_links"      => [            // ["icon" => "fas fa-link", "text" => "Testnet explorer", "href" => "https://..."]
+        ],
+        "show_menu_reflinks" => false,      // sponsor badges in the menu
+        "hosting_ref"       => [],          // ["name" => ..., "img_src" => "/img/...", "href" => "https://...", "text" => "Hosted by"]
+        "wallet_ref"        => [],          // same shape as hosting_ref
+        "operator_name"     => "",          // who runs this explorer: side menu badge and meta author
+        "operator_url"      => "",
+        "operator_logo"     => "",          // path under public/, e.g. "img/operator.svg"; the name is shown when empty
+        "operator_label"    => "Operated by",
+
+    // Pages and features
+        "overview_precision"    => 2,       // decimal places on overview pages
+        "default_precision"     => 8,       // decimal places on detail pages
+        "gui_refresh_sec"       => 10,      // auto-refresh of live pages
+        "movements_overview_days" => 7,     // days of movements on the overview
+        "show_pages" => [                   // optional pages; blocks, transactions, mempool, network and movements are always on
+            "about"         => true,
+            "addresses"     => true,
+            "burned"        => true,
+            "markets"       => false,
+            "mining"        => true,
+            "stats"         => true,
+            "masternodes"   => false,
+            "staking"       => false,
+            "assets"        => true,
+            "airdrop"       => false,       // genesis airdrop claims, needs genesis_airdrop_enabled
+        ],
+        "show_op_return"        => true,    // show OP_RETURN payloads
+        "show_zerocoin"         => false,
+        "show_burned"           => true,    // overview card
+        "show_illegal_supply"   => true,    // overview card
+        "export_csv_enabled"    => true,    // CSV buttons on address, group and asset pages
+        "rvn_assets"            => true,    // assets: ASSETS/ASSETMOVES collections, asset pages and API
+        "show_asset_messages"   => true,    // IPFS messages attached to assets
+        "ipfs_explorer_link"    => "https://ipfs.io/ipfs/!#IPFS-HASH#!", // gateway for asset IPFS hashes
+        "genesis_airdrop_enabled" => false, // track genesis airdrop claims (creates AIRDROPS)
+
+    // Markets
+        "load_markets"          => false,   // poll exchanges from the metrics loader
+        "markets_overview_days" => 14,      // chart window
+        "vwap_enabled"          => true,
+        "vwap_color"            => "#384082",
+        "markets" => [                      // ["exchange" => "xeggex", "base" => "BTC", "quote" => "EXAMPLE", "link" => "https://..."]
+        ],
+        "base_prices" => [                  // fiat conversion of the base; only coinbase-pro is implemented
+            ["exchange" => "coinbase-pro", "fiat" => "USD", "base" => "BTC"],
+            ["exchange" => "coinbase-pro", "fiat" => "EUR", "base" => "BTC"],
+        ],
+
+    // Admin area
+        "session_inactivity_sec"    => 86400,   // idle TTL of admin sessions (baked into the index)
+        "session_max_age_sec"       => 259200,  // absolute lifetime of admin sessions
+        "dashboard_refresh_sec"     => 10,
+        "magic_key"                 => "",      // secret for ?mn= that reveals hidden pages; empty disables it
+
+    // API
+        "api_max_requests_per_burst_period" => 15,  // calls per IP per burst window; 0 disables limiting
+        "api_burst_period_seconds"          => 5,   // burst window (baked into the index)
+        "api_unlimited_ip_addresses"        => ["127.0.0.1", "::1"], // exempt from limits
+        "api_blacklisted_ip_addresses"      => [],  // get HTTP 551 on every call
+        "trusted_proxies"                   => [],  // proxies whose X-Forwarded-For is believed (IPs or CIDR), e.g. a front proxy and the CDN ranges
+
+    // Ads, analytics, consent (all off for a self-hosted explorer)
+        "ads_enabled"       => false,
+        "cmp_enabled"       => false,       // consent banner; required in production when ads are on
+        "cmp_property_id"   => "",          // InMobi Choice property id; the CMP loads only when this is set
+        "cmp_script"        => "js/local/cmp.js", // the CMP vendor's tag, saved by you below public/ (not in git)
+        //"consent_countries" => ["DE", "FR"], // countries shown the consent banner; default EU, EEA, UK, CH
+        "google_tag_id"     => "",          // Google Tag Manager container id
+        "cloudflare_beacon_token" => "",    // Cloudflare Web Analytics
+        "trustpilot"        => [],          // ["business_id" => ..., "template_id" => ..., "token" => ..., "review_url" => "https://www.trustpilot.com/review/<domain>"]
+        "ads_priority"      => [],          // provider order, e.g. ["sevio", "bitmedia", "adsense"]
+        "ads_fallback_ms"   => 1000,        // ms a provider gets to fill a slot; or per provider: ["sevio" => 3500, "default" => 900]
+        "ads_config"        => [
+            "adsense_client_id"     => "",
+            "sevio_account_id"      => "",
+            "sevio_inventory_id"    => "",
+            "units"                 => [],  // "ftr-l-728" => ["sevio_id" => "", "bitmedia_id" => "", "adsense_id" => ""]
+        ],
+
+    // Hosted-service expiry; keep disabled on a self-hosted explorer
+        "subscription_enabled"  => false,
+        "subscription_endtime"  => "",
+    ];

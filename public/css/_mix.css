@@ -1,0 +1,213 @@
+.l-mob-320, .m-mob-320, .r-mob-320, .l-desk-728, .r-desk-728,
+.ftr-l-320, .ftr-m-320, .ftr-r-320, .ftr-l-728, .ftr-r-728,
+.mix-l, .mix-m, .mix-r {
+  display:none!important;
+}
+.l-mob-320, .m-mob-320, .r-mob-320,
+.ftr-l-320, .ftr-m-320, .ftr-r-320 {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width:320px;
+  height:100px;
+  margin:0;
+  padding:0;
+}
+.l-desk-728, .r-desk-728,
+.ftr-l-728, .ftr-r-728 {
+  width:728px;
+  height:90px;
+  margin:0;
+  padding:0;
+}
+.page-footer-mix{
+    background-color: var(--body-background);
+    border-top: 2px solid var(--footer-border);
+    position:sticky;
+    bottom:0;
+    z-index: 999!important;
+}
+
+/* Reserve for the rotated CMP persistent link on the right edge. */
+.cmp-spacer{
+  width:3em;
+}
+
+/* Tier selection is width-driven: the unit that fits the viewport wins.
+   Height is only an on/off gate -- 728x90 is 10px SHORTER than 320x100,
+   so it must never be the tall-screen-only option.
+
+   Width budget per tier (slots + .cmp-spacer):
+     728+320+728 = 1824px   2x728 = 1504px   1x728 = 776px
+     2x320       =  688px   1x320 =  368px                     */
+
+@media (min-height: 500px) and (min-width:1860px) {
+  /* left 728x90 + mid 320x100 + right 728x90 */
+  .page-footer-mix{
+    min-height: 108px!important;
+  }
+
+  .content-mix {
+    min-height: calc(100vh - 143px)!important;
+    margin-bottom:10px!important;
+  }
+
+  .l-desk-728, .r-desk-728,
+  .ftr-l-728, .ftr-r-728,
+  .m-mob-320, .ftr-m-320,
+  .mix-l, .mix-m, .mix-r{
+    display:grid!important;
+  }
+  .l-mob-320, .r-mob-320,
+  .ftr-l-320, .ftr-r-320 {
+    display:none!important;
+  }
+}
+
+@media (min-height: 500px) and (min-width:1560px) and (max-width:1859.98px) {
+  /* left+right 728x90 */
+  .page-footer-mix{
+    min-height: 98px!important;
+  }
+
+  .content-mix {
+    min-height: calc(100vh - 133px)!important;
+    margin-bottom:10px!important;
+  }
+
+  .l-desk-728, .r-desk-728,
+  .ftr-l-728, .ftr-r-728,
+  .mix-l, .mix-r{
+    display:grid!important;
+  }
+  .l-mob-320, .m-mob-320, .r-mob-320,
+  .ftr-l-320, .ftr-m-320, .ftr-r-320,
+  .mix-m {
+    display:none!important;
+  }
+}
+
+@media (min-height: 500px) and (min-width:820px) and (max-width:1559.98px) {
+  /* left 728x90 */
+  .page-footer-mix{
+    min-height: 98px!important;
+  }
+
+  .content-mix {
+    min-height: calc(100vh - 133px)!important;
+    margin-bottom:10px!important;
+  }
+
+  .l-desk-728, .ftr-l-728, .mix-l{
+    display:grid!important;
+  }
+  .r-desk-728, .l-mob-320, .m-mob-320, .r-mob-320,
+  .ftr-r-728, .ftr-l-320, .ftr-m-320, .ftr-r-320,
+  .mix-m, .mix-r{
+    display:none!important;
+  }
+}
+
+@media (min-height: 500px) and (min-width:720px) and (max-width: 819.98px) {
+  /* left+mid 320x100 */
+  .page-footer-mix{
+    min-height: 108px!important;
+  }
+  .content-mix {
+    min-height: calc(100vh - 143px)!important;
+    margin-bottom:10px!important;
+  }
+  .l-mob-320, .m-mob-320,
+  .ftr-l-320, .ftr-m-320,
+  .mix-l, .mix-m{
+    display:grid!important;
+  }
+  .r-mob-320, .l-desk-728, .r-desk-728,
+  .ftr-r-320, .ftr-l-728, .ftr-r-728,
+  .mix-r {
+    display:none!important;
+  }
+}
+
+@media (min-height: 500px) and (min-width:360px) and (max-width: 719.98px) {
+  /* left 320x100 */
+  .page-footer-mix{
+    min-height: 108px!important;
+  }
+
+  .content-mix {
+    min-height: calc(100vh - 143px)!important;
+    margin-bottom:10px!important;
+  }
+
+  .l-mob-320, .ftr-l-320, .mix-l{
+    display:grid!important;
+  }
+  .m-mob-320, .r-mob-320, .l-desk-728, .r-desk-728,
+  .ftr-m-320, .ftr-r-320, .ftr-l-728, .ftr-r-728,
+  .mix-m, .mix-r {
+    display:none!important;
+  }
+}
+
+/* Under 400px a 320px slot plus a 3em reserve no longer fits: drop the
+   spacer and pin the slot left so the CMP tab keeps the right edge clear. */
+@media (max-width: 399.98px) {
+  .cmp-spacer{
+    width:0!important;
+  }
+  .mix-row{
+    justify-content: flex-start!important;
+    padding-right: 2.5em!important;
+  }
+}
+
+/* inmobi CMP */
+
+.qc-cmp2-persistent-link {
+  background-color: var(--primary);
+  color: var(--body-background)!important;
+  transform: rotate(90deg);
+  bottom:2.52em;
+  right:-2.51em;
+  border-radius: 0 0 0 5px;
+}
+
+#qc-cmp2-ui {
+  font-size: 90%;
+}
+
+#qc-cmp2-ui::before {
+  background-color: var(--body-background);
+  color: var(--primary)!important;
+}
+
+.qc-cmp2-publisher-logo-container figure {
+  background-color: var(--primary);
+}
+
+.qc-cmp2-summary-info div {
+  padding: 0;
+}
+
+.qc-cmp2-summary-buttons #disagree-btn, #save-and-exit {
+  background-color: var(--primary);
+  color: var(--body-background)!important;
+}
+
+.qc-cmp2-summary-buttons #accept-btn, .qc-cmp2-summary-buttons #more-options-btn {
+  border-color: var(--primary);
+  background-color: var(--body-background);
+  color: var(--primary);
+  border: 1px solid;
+  
+}
+.qc-cmp2-summary-buttons #accept-btn:hover, .qc-cmp2-summary-buttons #more-options-btn:hover {
+  background-color: var(--primary);
+  color: var(--body-background)!important;
+}
+
+.qc-cmp2-footer-links button, .qc-cmp2-header-links button {
+ background-color: var(--body-background);
+ color: var(--primary)!important;
+}

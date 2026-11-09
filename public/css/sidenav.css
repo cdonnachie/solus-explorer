@@ -1,0 +1,233 @@
+/*
+ * ngex side navigation and double navbar layout.
+ * Replaces the Material Design for Bootstrap "side-nav / fixed-sn / double-nav"
+ * pattern with plain CSS. Markup and class names are unchanged so that the
+ * per-skin stylesheets (<skin>-style-n.css) keep applying.
+ *
+ * Layout: at viewport widths above the breakpoint the drawer is a fixed
+ * column on the left and the navbar, main and footer are offset by its width.
+ * At or below the breakpoint the drawer is off-canvas and is opened from the
+ * hamburger (.button-collapse); an overlay dims the page while it is open.
+ */
+
+:root {
+  --sn-width: 15rem;
+  --sn-transition: transform .3s ease;
+}
+
+/* --- drawer ---------------------------------------------------------- */
+.side-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--sn-width);
+  margin: 0;
+  padding-bottom: 3.75rem;
+  z-index: 1040;
+  overflow: hidden;
+  background-color: #2c2f34;
+  color: #fff;
+  transform: translateX(-105%);
+  transition: var(--sn-transition);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.side-nav.open {
+  transform: translateX(0);
+  box-shadow: 0 0 20px rgba(0, 0, 0, .35);
+}
+.side-nav ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+.side-nav ul li { padding: 0; }
+.side-nav a {
+  display: block;
+  font-size: 1rem;
+  height: 56px;
+  line-height: 56px;
+  padding-left: 20px;
+}
+.side-nav .custom-scrollbar {
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* menu */
+.side-nav .collapsible {
+  margin: 1rem 0 0;
+  padding: 0;
+}
+.side-nav .collapsible > li { border-radius: 2px; }
+.side-nav .collapsible a {
+  color: #fff;
+  font-weight: 300;
+  font-size: .8rem;
+  height: 36px;
+  line-height: 36px;
+  padding-left: 23px;
+  border-radius: 2px;
+  transition: background-color .3s ease-in-out;
+}
+.side-nav .collapsible a:hover,
+.side-nav .collapsible a.active { background-color: rgba(255, 255, 255, .15); }
+.side-nav .collapsible .fas,
+.side-nav .collapsible .fab,
+.side-nav .collapsible .far {
+  font-size: .8rem;
+  margin-right: 13px;
+}
+.side-nav .collapsible-body { display: none; }
+.side-nav .collapsible-body.show { display: block; }
+.side-nav .collapsible-body a {
+  padding-left: 47px;
+  background-color: rgba(0, 0, 0, .15);
+}
+.side-nav .fa-angle-down.rotate-icon {
+  position: absolute;
+  right: 0;
+  top: .8rem;
+  margin-right: 1.25rem;
+  transition: transform .3s;
+}
+.side-nav .collapsible-header[aria-expanded="true"] .rotate-icon { transform: rotate(180deg); }
+
+/* logo, social links, search */
+.side-nav .logo-sn a { padding-left: 0; }
+.side-nav .social {
+  padding-top: 0;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, .65);
+}
+.side-nav .social li {
+  display: inline-block;
+  padding: .6rem 0;
+  margin: 0;
+}
+.side-nav .social a { margin: 0; padding: 0; }
+.side-nav .social .fas,
+.side-nav .social .fab,
+.side-nav .social .far {
+  font-size: .9rem;
+  padding: 0 .6rem;
+  color: #dbe4e7;
+  transition: color .3s;
+}
+.side-nav .search-form { padding: 0; }
+.side-nav .search-form input[type="text"] {
+  border-bottom: 1px solid rgba(255, 255, 255, .65);
+  font-weight: 300;
+  padding-left: 1.88rem;
+}
+.side-nav .search-form input[type="text"]::placeholder { color: #fff; }
+.side-nav .search-form .form-control { margin-bottom: 0; }
+
+/* background layer with colour mask (mask colour comes from the skin) */
+.side-nav .sidenav-bg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: var(--sn-width);
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+}
+.side-nav .sidenav-bg:after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+/* --- overlay while the drawer is open off-canvas --------------------- */
+#sidenav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 120vh;
+  background-color: rgba(0, 0, 0, .5);
+  z-index: 1039;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s ease;
+}
+#sidenav-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* --- top navbar ------------------------------------------------------ */
+.double-nav {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.double-nav .container { padding-left: 0; padding-right: 0; }
+.double-nav a {
+  font-size: 15px;
+  color: #fff;
+}
+.double-nav .breadcrumb-dn p {
+  margin: 0;
+  padding-top: 0;
+  padding-left: 1rem;
+}
+.double-nav .button-collapse {
+  display: block;
+  position: relative;
+  font-size: 1.4rem;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+@media (max-width: 993px) {
+  .double-nav .breadcrumb-dn { display: none; }
+}
+/* taller bar at the top of the page, shrinks once sidenav.js adds .top-nav-collapse;
+   the skin colours .top-nav-collapse */
+@media (min-width: 600px) {
+  .navbar.scrolling-navbar {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    transition: background .5s ease-in-out, padding .5s ease-in-out;
+  }
+  .navbar.scrolling-navbar.top-nav-collapse {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+}
+
+/* --- page offsets ---------------------------------------------------- */
+.fixed-sn main { padding-top: 5.5rem; }
+@media (min-width: 600px) {
+  .fixed-sn main,
+  .fixed-sn .page-footer .container-fluid { margin-left: 2%; margin-right: 2%; }
+}
+@media (min-width: 992px) {
+  .fixed-sn main,
+  .fixed-sn .page-footer .container-fluid { margin-left: 5%; margin-right: 5%; }
+}
+@media (min-width: 1200px) {
+  .fixed-sn main,
+  .fixed-sn .page-footer .container-fluid { margin-left: 6%; margin-right: 6%; }
+}
+
+/* desktop: drawer pinned open, content offset, no hamburger */
+@media (min-width: 1441px) {
+  .side-nav.fixed { transform: translateX(0); }
+  .side-nav.fixed.open { box-shadow: none; }
+  .fixed-sn .double-nav,
+  .fixed-sn main,
+  .fixed-sn footer { padding-left: var(--sn-width); }
+  .double-nav .button-collapse { display: none; }
+  #sidenav-overlay { display: none; }
+}

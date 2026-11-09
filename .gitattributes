@@ -1,0 +1,25 @@
+# Text files are stored with LF line endings.
+* text=auto eol=lf
+
+*.php         text diff=php
+*.example*    text diff=php
+*.sh          text eol=lf
+*.svg         text
+
+# Binary assets: never diffed or converted.
+*.png         binary
+*.jpg         binary
+*.jpeg        binary
+*.gif         binary
+*.ico         binary
+*.woff        binary
+*.woff2       binary
+*.ttf         binary
+*.eot         binary
+*.otf         binary
+*.pdf         binary
+
+# Vendored, minified third-party files: keep out of diffs and language stats.
+*.min.js      -diff linguist-vendored
+*.min.css     -diff linguist-vendored
+public/movements/spinner.php linguist-language=PHP

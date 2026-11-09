@@ -1,0 +1,187 @@
+html {
+  font-display: optional;
+}
+
+.double-nav .breadcrumb-dn h1 {
+    margin: 0;
+    padding-top: 0;
+    padding-left: 1rem;
+}
+
+.min-chart .value {
+  display: inline-block;
+  line-height: 110px;
+  z-index: 2; }
+  .min-chart .value:after {
+    margin-left: 0.1em;
+    font-size: 0.8rem; }
+
+/*   Back/Fed buttons */
+.btn-lst:hover{
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.25);
+}
+.btn-lst-disabled{
+  color: darkgrey !important;
+}
+
+
+/* Top search bar */
+  .search-bar {
+    display: none;
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    width: 100%;
+    max-width: 550px;
+    height: 100%;
+    text-align: center;
+    z-index:1000;
+  }
+  @media (min-width: 1440px) {
+    .search-bar-trigger {
+      display: flex;
+    }
+    .search-bar {
+      margin-left: 210px;
+      left: unset;
+      right: 0px;
+
+    }
+  }
+  .search-bar form {
+    margin-top: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .search-bar input[type="text"], .search-bar input[type="text"]:focus:not([readonly]) {
+    font-size: 100%;
+    box-shadow: none !important;
+    -webkit-box-shadow: none !important;
+  }
+  .search-bar input[type="text"]::placeholder {
+    font-style: italic;
+    font-size: 95%;
+  }
+  .search-bar form button {
+    background: none;
+    border: 0;
+  }
+  .search-bar .fa-search, .search-bar i {
+    height: 115%;
+    font-size: 115%;
+  }
+
+/* Fading Cards CSS */
+  .fading-front {
+    position:relative;
+    transition: 0.3s ease-in-out;
+    z-index:51;
+    width: 100% !important;
+  }
+  .fading-back {
+    position:absolute;
+    transition: 0.3s ease-in-out;
+    z-index:50;
+    opacity:0;
+    width: 100% !important;
+  }
+
+/* Flip Cards CSS */
+  .card-flip-container {
+    display: grid;
+    perspective: 700px;
+  }
+
+  .card-flip {
+    display: grid;
+    grid-template: 1fr / 1fr;
+    grid-template-areas: "frontAndBack";
+    transform-style: preserve-3d;
+    transition: all 0.7s ease;
+  }
+
+  .card-flip div {
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
+  }
+
+  .front {
+    grid-area: frontAndBack;
+  }
+
+  .back {
+    grid-area: frontAndBack;
+    transform: rotateY(-180deg);
+  }
+
+  .flipped {
+    transform: rotateY(180deg);
+  }
+
+  .light-gray-color{
+    background-color: #f5f5f5;
+  }
+
+  .scrollable {
+    text-align:justify;
+    overflow-y:auto;
+  }
+  .btn-masked:after {
+    background: #ffffffdd;
+  }
+/* Stats Chart */
+  .stats-chart {
+    height:25em;
+    width:100%;
+  }
+  .stats-chart-tooltip {
+    color:#000;
+  }
+
+/*    */
+.amcharts-amexport-item {
+  font-size: 9px;
+  height:auto;
+  width:auto;
+  min-height:23px !important;
+  min-width:23px !important;
+  padding-top: 2px !important;
+}
+
+.ct {
+    height: 25px;
+    padding: 5px 0px 5px 0px;
+}
+
+.solus-skin .side-nav-footer {
+  height: 50px; 
+  padding-bottom:20px;}
+  .solus-skin .side-nav-footer a {
+    height:35px;
+    line-height:20px;
+    padding-left:0;}
+  .solus-skin .side-nav-footer p {
+    font-size:75%;}
+  .solus-skin .side-nav-footer div.col {
+    height:50px;}
+
+  .solus-skin .side-nav-footer-tp {
+    height: 102px!important;
+  }
+  .solus-skin .side-nav-content-tp{
+    min-height: calc(100vh - 157px)!important;
+  }
+  .solus-skin .trustpilot-widget {
+    height: 52px;
+  }
+  #tp-widget-wrapper {
+    text-align: left!important;
+  }
+
+  .dataTables_scrollHeadInner {
+    width: 100% !important;
+  }
+
+html {
+   overflow-y:scroll;
+}
