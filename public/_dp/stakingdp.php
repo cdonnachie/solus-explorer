@@ -60,14 +60,7 @@
         }
         $at = db_getAddressTags($winner);
         $tag_str = "";
-        if ($at->has_alias || $at->has_tags){
-          if ($at->has_alias && !empty($at->has_alias)){
-            $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$at->address_alias."</span>&nbsp;";
-          }            
-          foreach ($at->group_tags as $tag){
-            $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-          }
-        }
+        $tag_str .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
         $or_tag = '';
         if (isset($settings['show_op_return']) && $settings['show_op_return'] && isset($blk->has_op_return) && $blk->has_op_return) {
           if (isset($settings['op_return_symbol']) && !empty($settings['op_return_symbol'])) {

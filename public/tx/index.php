@@ -467,14 +467,7 @@ if (count($vins)>0 && count($vouts)>0) : ?>
                   if (isset($vin->suspect) && $vin->suspect) {
                     $tag_str .= "<i class='fas fa-exclamation-triangle text-danger ml-1 mb-1 p-1' title='Suspected Movements'></i>&nbsp;";
                   }
-                  if ($at->has_alias || $at->has_tags){
-                    if ($at->has_alias && !empty($at->has_alias)){
-                      $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$at->address_alias."</span>&nbsp;";
-                    }            
-                    foreach ($at->group_tags as $tag){
-                      $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-                    }
-                  }
+                  $tag_str .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
                   if (isset($vin->type)) {
                     if ($vin->type == "shield"){
                       $sym = (isset($settings["shield_symbol"])) ? $settings["shield_symbol"] : "fas fa-shield-alt";
@@ -591,14 +584,7 @@ if (count($vins)>0 && count($vouts)>0) : ?>
                   $at = db_getAddressTags($vout->address);
                   $tt->stopTimer("tx.db_getAddressTags");
 
-                  if ($at->has_alias || $at->has_tags){
-                    if ($at->has_alias && !empty($at->has_alias)){
-                      $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$at->address_alias."</span>&nbsp;";
-                    }            
-                    foreach ($at->group_tags as $tag){
-                      $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-                    }
-                  }
+                  $tag_str .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
                   $cs_staker = ""; $cs_owner = "";
                   if (isset($vout->staker) && !empty($vout->staker)){
                     $cs_staker = "<br><span class='grey-text cs-address' title='Staker Address'>".$vout->staker."</span>";
@@ -675,14 +661,7 @@ $tt->stopTimer("processVinsAndVouts");
                           if (isset($avin->suspect) && $avin->suspect) {
                             $tag_str .= "<i class='fas fa-exclamation-triangle text-danger ml-1 mb-1 p-1' title='Suspected Movements'></i>&nbsp;";
                           }
-                          if ($at->has_alias || $at->has_tags){
-                            if ($at->has_alias && !empty($at->has_alias)){
-                              $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$at->address_alias."</span>&nbsp;";
-                            }            
-                            foreach ($at->group_tags as $tag){
-                              $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-                            }
-                          }
+                          $tag_str .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
 
                           echo "<tr><td class='text-left p-1'><a class='primary-text' href='".$settings["explorer_address"]."/address/?address=".$avin->address."'>".$avin->address."</a>".$tag_str."</td>";
                           echo "<td class='text-center p-1'><span class='primary-text'><a href='".$settings["explorer_address"]."/asset/?asset_id=". $avin->key."'>". $avin->name."</a></td>";
@@ -730,14 +709,7 @@ $tt->stopTimer("processVinsAndVouts");
                           if (isset($avout->suspect) && $avout->suspect) {
                             $tag_str .= "<i class='fas fa-exclamation-triangle text-danger ml-1 mb-1 p-1' title='Suspected Movements'></i>&nbsp;";
                           }
-                          if ($at->has_alias || $at->has_tags){
-                            if ($at->has_alias && !empty($at->has_alias)){
-                              $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$at->address_alias."</span>&nbsp;";
-                            }            
-                            foreach ($at->group_tags as $tag){
-                              $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-                            }
-                          } 
+                          $tag_str .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
                           if (isset($avout->message) && isset($settings["show_asset_messages"]) && $settings["show_asset_messages"]) {
                             if (isset($settings['asset_message_symbol']) && !empty($settings['asset_message_symbol'])) {
                                $sym_str .= "<span class='text-info ml-1 mb-1 p-1' title='Asset Message'><i class='".$settings['asset_message_symbol']."'></i></span>&nbsp;";

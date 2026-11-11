@@ -301,14 +301,7 @@ if ($data->last_block->number < ($rpc_bc - $settings["maturity"]) || $rpc_bc == 
                         foreach ($data->top_addresses as $rank => $address){
                          // $at = db_getAddressTags($address);
                           $tag_str = "";
-                          if (!empty($address->alias)){
-                            $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$address->alias."</span>&nbsp;";
-                          }            
-                          if (isset($address->tags)&& count($address->tags) > 0){
-                            foreach ($address->tags as $ix => $tag){
-                              $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-                            }
-                          }
+                          $tag_str .= ui_labelBadges($address->alias ?? '', $address->tags ?? [], 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
                           // $a_split = splitFloat(($amount), $precision, $precision);
                           // $p_split = splitFloat((100*@cdec($amount)/($dbs->coincirculation)),2,2);
                           echo "<tr><td class='text-center p-1'>".$rank."</td>";

@@ -32,7 +32,7 @@
           $m = '';
           $atag = '';
           if (isset($am->alias) && !empty($am->alias)) {
-            $atag = '"'.$am->alias.'"';
+            $atag = ui_csvText($am->alias);
           }
           $m .= '"'.$am->_id.'",';
           $m .= $atag.",";

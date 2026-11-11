@@ -165,11 +165,7 @@
         $row=array();
         if ($name != "Other"){
             $c_split=splitFloat($coins, $precision, $precision);
-            if (array_key_exists($name, $winners_tags)){
-                $tag = "<span class='badge badge-info ml-1'>".$winners_tags[$name]."</span>";
-            } else {
-                $tag="";
-            }
+            $tag = ui_labelBadge($winners_tags[$name] ?? '', 'badge-info ml-1');
             array_push($row, "<a class='txlist-txid text-primary' href='".$settings["explorer_address"]."/address/?address=".$name."'>".$name."</a>".$tag);
             array_push($row, "<span class='blocklist-amount primary-text'>".$miners_blocks[$name]."</span>");
             array_push($row, $c_split->whole.".<small>".$c_split->fraction."</small>");

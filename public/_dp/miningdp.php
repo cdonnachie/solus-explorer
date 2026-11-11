@@ -48,15 +48,7 @@
         }
           $at = db_getAddressTags($winner);
           $tag_str = "";
-          if ($at->has_alias || $at->has_tags){
-            if ($at->has_alias && !empty($at->has_alias)){
-              $tag_str.= "<span class='badge badge-info mx-1'>".$at->address_alias."</span>&nbsp;";
-            }            
-            foreach ($at->group_tags as $tag){
-              $tag_str.= "<span class='badge badge-primary mx-1'>".$tag."</span>&nbsp;";
-            }
-
-          }
+          $tag_str .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info mx-1', 'badge-primary mx-1');
           $br_split = splitFloat($blk->block_reward,$precision,$precision);
           $fa_split = splitFloat($blk->fee_amount,$precision,$precision);
           // Timestamp

@@ -202,9 +202,7 @@
                 if (count($ag)>0 && isset($ag[0]->tags)){
                   echo "<div class='mb-2 col-12 pt-2 pr-0 text-right'>";
                   echo "<span class='font-small pr-3 h6-responsive grey-text'>TAGS:</span>";
-                  foreach($ag[0]->tags as $tag){
-                    $gtags = $gtags.'&nbsp;<span class="badge badge-primary">'.$tag.'</span>';
-                  }
+                  $gtags = ui_labelBadges('', $ag[0]->tags, 'badge-primary ml-1');
                   echo $gtags."</div>";
                 }
               ?>

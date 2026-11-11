@@ -27,6 +27,29 @@ use WebSocket\Exception;
       return ($vchar === "s");
   }
 
+  /**
+   * Address labels (ADDRESSES.alias, ADDRESSGROUPS.tags) are operator input and may have
+   * been written with mongosh, so every output path escapes them here.
+   */
+  function ui_labelBadge($text, string $class = 'badge-info ml-1 mb-1') : string {
+      $text = (string)$text;
+      if ($text === '') { return ''; }
+      return "<span class='badge ".$class."'>".h($text)."</span>&nbsp;";
+  }
+  function ui_labelBadges($alias, $tags, string $alias_class = 'badge-info ml-1 mb-1', ?string $tag_class = null) : string {
+      $out = ui_labelBadge($alias, $alias_class);
+      foreach ((is_array($tags) || is_object($tags)) ? $tags : [] as $tag) {
+          $out .= ui_labelBadge($tag, $tag_class ?? $alias_class);
+      }
+      return $out;
+  }
+  // CSV field: quoted, and a leading = + - @ tab or CR made inert so spreadsheets don't run it as a formula
+  function ui_csvText($text) : string {
+      $text = (string)$text;
+      if ($text !== '' && strpos("=+-@\t\r", $text[0]) !== false) { $text = "'".$text; }
+      return '"'.str_replace('"', '""', $text).'"';
+  }
+
   // Utilities
     function milliseconds() {
         $mt = explode(' ', microtime());

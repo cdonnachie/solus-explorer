@@ -592,10 +592,8 @@
         <?php 
           foreach ($data->miners as $addr=>$miner_info) {
             if ($addr != "Other"){
-              if (isset($miner_info->alias) && $miner_info->alias != ""){
-                $tag = '<span class="badge badge-info ml-1">'.$miner_info->alias.'</span>';
-              } else {$tag="";}
-              echo "['<a class=\" txlist-txid text-primary \" href=\"".$settings["explorer_address"]."/address/?address=".$addr."\">".$addr."</a>".$tag."',".$miner_info->mined_blocks.",'".$miner_info->mined_coins->whole.".<small>".$miner_info->mined_coins->fraction."</small>'],";
+              $cell = "<a class='txlist-txid text-primary' href='".h($settings["explorer_address"]."/address/?address=".$addr)."'>".h($addr)."</a>".ui_labelBadge($miner_info->alias ?? '', 'badge-info ml-1');
+              echo json_encode([$cell, (int)$miner_info->mined_blocks, $miner_info->mined_coins->whole.".<small>".$miner_info->mined_coins->fraction."</small>"], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT).",";
             }
           }
         ?>

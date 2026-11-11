@@ -353,9 +353,7 @@
                     //  }
                     //}
                     if (isset($grp->tags) && count($grp->tags)>0){
-                      foreach($grp->tags as $tag){
-                        $gtags = $gtags.'&nbsp;<span class="badge badge-primary">'.$tag.'</span>';
-                      }
+                      $gtags = ui_labelBadges('', $grp->tags, 'badge-primary ml-1');
                     }
                     echo "<tr><td class='text-center p-1'>".$rank."</td>";
                     echo "<td class='text-left p-1'><a class='primary-text' href='".$settings["explorer_address"]."/addressgroup/?groupid=".$grp->group_id."'>".$grp->group_id."</a>".$gtags."</td>";

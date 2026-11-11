@@ -287,15 +287,7 @@
                     $ai = db_getAddressData($am->address)[0];
                     $at = db_getAddressTags($ai->_id);
                     $tag_str = "";
-                    if ($at->has_alias || $at->has_tags){
-                      if ($at->has_alias && !empty($at->has_alias)){
-                        $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$at->address_alias."</span>&nbsp;";
-                      }            
-                      foreach ($at->group_tags as $tag){
-                        $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-                      }
-          
-                    }
+                    $tag_str .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
                     $am_split = splitFloat(dflt($am->amount),$def_precision,$def_precision);
                     echo "<tr><td class='text-left py-1 px-2'><a class='primary-text' href='".$settings["explorer_address"]."/address/?address=".$am->address."'>".$am->address."</a>".$tag_str."</td>
                     <td class='text-center py-1 px-2'><a class='' href='".$settings["explorer_address"]."/block/?blockheight=".$am->block_ix."' title='Navigate to Block'>".$am->block_ix."</a>&nbsp;&nbsp;<small><a class='' href='../tx/?txid=".$am->tx_id."' title='Navigate to Transaction'><i class='fas fa-external-link-alt' aria-hidden='true'></i></a></small></td>
@@ -334,15 +326,7 @@
                     $ai = db_getAddressData($am->address)[0];
                     $at = db_getAddressTags($ai->_id);
                     $tag_str = "";
-                    if ($at->has_alias || $at->has_tags){
-                      if ($at->has_alias && !empty($at->has_alias)){
-                        $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$at->address_alias."</span>&nbsp;";
-                      }            
-                      foreach ($at->group_tags as $tag){
-                        $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-                      }
-          
-                    }
+                    $tag_str .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
                     $am_split = splitFloat(dflt($am->amount),$def_precision,$def_precision);
                     echo "<tr><td class='text-left py-1 px-2'><a class='primary-text' href='".$settings["explorer_address"]."/address/?address=".$am->address."'>".$am->address."</a>".$tag_str."</td>
                     <td class='text-center py-1 px-2'><a class='' href='".$settings["explorer_address"]."/block/?blockheight=".$am->block_ix."' title='Navigate to Block'>".$am->block_ix."</a>&nbsp;&nbsp;<small><a class='' href='../tx/?txid=".$am->tx_id."' title='Navigate to Transaction'><i class='fas fa-external-link-alt' aria-hidden='true'></i></a></small></td>

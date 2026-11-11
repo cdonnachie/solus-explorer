@@ -187,16 +187,7 @@
     foreach ($data->top_spent as $am){
         $am_split = splitFloat($am->amount,$def_precision,$def_precision);
         $tag_str = "";
-        if (isset($am->address_alias) || isset($am->tags)){
-          if (isset($am->address_alias) && !empty($am->address_alias)){
-            $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".h($am->address_alias)."</span>&nbsp;";
-          }
-          if (isset($am->tags) && count($am->tags)>0){
-            foreach ($am->group_tags as $tag){
-                $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".h($tag)."</span>&nbsp;";
-            }
-        }
-        } 
+        $tag_str .= ui_labelBadges($am->address_alias ?? '', $am->tags ?? [], 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
         if (isset($am->suspect) && $am->suspect){
             $tag_str.= "<i class='fas fa-exclamation-triangle text-danger ml-1 mb-1 p-1' title='Suspected Movement'></i>&nbsp;";
         }
@@ -211,16 +202,7 @@
     foreach ($data->top_received as $am){
         $am_split = splitFloat($am->amount,$def_precision,$def_precision);
         $tag_str = "";
-        if (isset($am->address_alias) || isset($am->tags)){
-          if (isset($am->address_alias) && !empty($am->address_alias)){
-            $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".h($am->address_alias)."</span>&nbsp;";
-          }            
-          if (isset($am->tags) && count($am->tags)>0){
-            foreach ($am->group_tags as $tag){
-              $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".h($tag)."</span>&nbsp;";
-            }
-          }
-        } 
+        $tag_str .= ui_labelBadges($am->address_alias ?? '', $am->tags ?? [], 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
         if (isset($am->suspect) && $am->suspect){
             $tag_str.= "<i class='fas fa-exclamation-triangle text-danger ml-1 mb-1 p-1' title='Suspected Movement'></i>&nbsp;";
           }

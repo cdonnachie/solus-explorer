@@ -701,16 +701,7 @@
                                   //$ai = db_getAddressData($am->address)[0];
                                   //$at = db_getAddressTags($am->address);
                                   $tag_str = "";
-                                  if (isset($am->address_alias) || isset($am->tags)){
-                                    if (isset($am->address_alias) && !empty($am->address_alias)){
-                                      $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$am->address_alias."</span>&nbsp;";
-                                    }
-                                    if (isset($am->tags) && count($am->tags)>0){
-                                      foreach ($am->group_tags as $tag){
-                                        $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-                                      }
-                                    }
-                                  } 
+                                  $tag_str .= ui_labelBadges($am->address_alias ?? '', $am->tags ?? [], 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
                                   if (isset($am->suspect) && $am->suspect){
                                     $tag_str.= "<i class='fas fa-exclamation-triangle text-danger ml-1 mb-1 p-1' title='Suspected Movement'></i>&nbsp;";
                                   }
@@ -751,16 +742,7 @@
                                   //$ai = db_getAddressData($am->address)[0];
                                   //$at = db_getAddressTags($am->address);
                                   $tag_str = "";
-                                  if (isset($am->address_alias) || isset($am->tags)){
-                                    if (isset($am->address_alias) && !empty($am->address_alias)){
-                                      $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$am->address_alias."</span>&nbsp;";
-                                    }
-                                    if (isset($am->tags) && count($am->tags)>0){
-                                      foreach ($am->group_tags as $tag){
-                                        $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-                                      }
-                                    }
-                                  } 
+                                  $tag_str .= ui_labelBadges($am->address_alias ?? '', $am->tags ?? [], 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
                                   if (isset($am->suspect) && $am->suspect){
                                     $tag_str.= "<i class='fas fa-exclamation-triangle text-danger ml-1 mb-1 p-1' title='Suspected Movement'></i>&nbsp;";
                                   }

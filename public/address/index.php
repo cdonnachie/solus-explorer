@@ -62,14 +62,7 @@
       if (!empty($groupid)){
         $at = db_getAddressTags($address);
         if ($at->has_tags || $at->has_alias){$gtags = 'Tags: ';}
-        if ($at->has_alias){
-          $gtags .= "<span class='badge badge-info ml-1 mb-1'>".$at->address_alias."</span>&nbsp;";
-        }
-        if ($at->has_tags){
-          foreach ($at->group_tags as $tag){
-            $gtags .= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-          }
-        }
+        $gtags .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
       }
       $tt->stopTimer("get_address_tags");
       $bal_split = splitFloat((@cdec($ar->balance) < 0) ? 0 : @cdec($ar->balance) ,$precision,$precision);

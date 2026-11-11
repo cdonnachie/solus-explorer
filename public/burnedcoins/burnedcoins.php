@@ -58,14 +58,8 @@
     $alias_str = "";
     $recoverable = "";
     //if ($burner->address == "Fee Collector") {$recoverable = "&nbsp;<span class='badge badge-primary ml-1 mb-1'>R</span>";}
-    if ($burner->alias != ""){
-     $alias_str = "<span class='badge badge-info ml-1 mb-1'>".$burner->alias."</span>&nbsp;";
-    }
-    if (count($burner->tags)>0){
-      foreach ($burner->tags as $tag){
-        $tags_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-      }
-    }
+    $alias_str = ui_labelBadge($burner->alias, 'badge-info ml-1 mb-1');
+    $tags_str  = ui_labelBadges('', $burner->tags, 'badge-primary ml-1 mb-1');
 
     $received_split = splitFloat($burner->received,$precision,$precision);
     $sent_split     = splitFloat($burner->sent,$precision,$precision);

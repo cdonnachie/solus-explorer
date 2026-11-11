@@ -144,14 +144,7 @@
         //$ai = db_getAddressData($am->address)[0];
         $at = db_getAddressTags($am->address);
         $tag_str = "";
-        if ($at->has_alias || $at->has_tags){
-          if ($at->has_alias && !empty($at->has_alias)){
-            $tag_str.= "<span class='badge badge-info ml-1 mb-1'>".$at->address_alias."</span>&nbsp;";
-          }            
-          foreach ($at->group_tags as $tag){
-            $tag_str.= "<span class='badge badge-primary ml-1 mb-1'>".$tag."</span>&nbsp;";
-          }
-        }
+        $tag_str .= ui_labelBadges($at->address_alias, $at->group_tags, 'badge-info ml-1 mb-1', 'badge-primary ml-1 mb-1');
 
         array_push($m,"<span class='txlist-timestamp '>".date('Y-m-d H:i:s', $am->move_time_sec)."</span>");
         array_push($m,"<a class='txlist-txid text-primary' href='".$settings["explorer_address"]."/address/?address=".$am->address."'>".$am->address."</a>".$tag_str);

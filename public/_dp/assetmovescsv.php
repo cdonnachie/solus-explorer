@@ -69,7 +69,7 @@
           $m .= $am->block_ix.",";
           $m .= '"'.$am->tx_id.'",';
           $m .= '"'.$am->address.'",';
-          $m .= '"'.$tag_str.'",';
+          $m .= ui_csvText($tag_str).",";
           $m .= $conf.",";
           $m .= $amount->toFixed($precision, false).",";
 
