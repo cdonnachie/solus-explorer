@@ -30,6 +30,12 @@
     .lbl-pfx { font: 500 .75rem/1 SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: #f1f5f8; border: 1px solid #cfdde6; border-radius: 1rem; padding: .3rem .6rem; margin-left: .3rem; cursor: pointer; }
     .lbl-pfx:hover, .lbl-pfx:focus { background: #e4edf3; outline: 0; }
     .lbl-pfx:disabled { opacity: .5; cursor: default; }
+    .lbl-tabbar { border-bottom: 1px solid #dee2e6; }
+    .lbl-tabs { display: flex; gap: .75rem; }
+    .lbl-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: .5rem .25rem; font-size: .95rem; font-weight: 500; color: #6c757d; cursor: pointer; }
+    .lbl-tabs button.active { border-bottom-color: currentColor; }
+    .lbl-tabs button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+    .lbl-tabs .lbl-n { font-weight: 400; color: #6c757d; }
     .lbl-facts .row { padding: .5rem 0; border-top: 1px solid rgba(0,0,0,.06); align-items: baseline; }
     .lbl-facts .row:first-child { border-top: 0; }
     .lbl-facts .lbl-k { font-size: .7rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: #6c757d; }
@@ -114,13 +120,13 @@
     <div class="card col-12 px-0 mb-4">
       <div class="card-header primary-color card-header-text py-2 d-flex justify-content-between align-items-center"><span class="h6 h6-responsive mb-0"><i class="fas fa-list" aria-hidden="true"></i> ALL LABELS</span></div>
       <div class="card-body">
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-          <div class="btn-group btn-group-sm my-1" role="group" aria-label="Label lists">
-            <button type="button" class="btn btn-info m-0" id="lblTabAliases" aria-pressed="true">Aliases <span id="lblNA"></span></button>
-            <button type="button" class="btn btn-light m-0" id="lblTabTags" aria-pressed="false">Group tags <span id="lblNT"></span></button>
+        <div class="lbl-tabbar d-flex flex-wrap justify-content-between align-items-end mb-3">
+          <div class="lbl-tabs" role="tablist" aria-label="Label lists">
+            <button type="button" role="tab" class="active primary-text" id="lblTabAliases" aria-selected="true">Aliases <span class="lbl-n" id="lblNA"></span></button>
+            <button type="button" role="tab" id="lblTabTags" aria-selected="false">Group tags <span class="lbl-n" id="lblNT"></span></button>
           </div>
           <label class="sr-only" for="lblFilter">Filter labels</label>
-          <input type="text" id="lblFilter" class="form-control form-control-sm my-1" style="max-width: 14rem;" placeholder="Filter" spellcheck="false">
+          <input type="text" id="lblFilter" class="form-control form-control-sm mb-2" style="max-width: 14rem;" placeholder="Filter" spellcheck="false">
         </div>
         <div id="lblList"><p class="lbl-hint">Loading…</p></div>
       </div>
@@ -342,8 +348,8 @@
     }
     function setTab(t) {
       tab = t; pending = null;
-      $("#lblTabAliases").toggleClass("btn-info", t === "aliases").toggleClass("btn-light", t !== "aliases").attr("aria-pressed", t === "aliases");
-      $("#lblTabTags").toggleClass("btn-info", t === "tags").toggleClass("btn-light", t !== "tags").attr("aria-pressed", t === "tags");
+      $("#lblTabAliases").toggleClass("active primary-text", t === "aliases").attr("aria-selected", t === "aliases");
+      $("#lblTabTags").toggleClass("active primary-text", t === "tags").attr("aria-selected", t === "tags");
       renderList();
     }
     $("#lblTabAliases").on("click", function (e) { e.preventDefault(); setTab("aliases"); });
