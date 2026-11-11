@@ -45,8 +45,8 @@
   <p class="lbl-hint mb-3">An alias names one address. Tags describe a whole address group and every address in it.</p>
 
   <section>
-    <div class="card mb-3">
-      <div class="card-header">Address or group</div>
+    <div class="card col-12 px-0 mb-4">
+      <div class="card-header primary-color card-header-text py-2 d-flex justify-content-between align-items-center"><span class="h6 h6-responsive mb-0"><i class="fas fa-search" aria-hidden="true"></i> ADDRESS OR GROUP</span></div>
       <div class="card-body">
         <form id="lblFind" class="form-row" autocomplete="off">
           <div class="col-12 col-md">
@@ -54,7 +54,7 @@
             <input type="text" id="lblId" class="form-control lbl-id" placeholder="Address or group id" spellcheck="false" maxlength="128">
           </div>
           <div class="col-12 col-md-auto mt-2 mt-md-0">
-            <button id="lblShow" type="submit" class="btn btn-primary btn-md m-0">Show labels</button>
+            <button id="lblShow" type="submit" class="btn btn-info btn-md m-0">Show labels</button>
           </div>
         </form>
         <p id="lblFindErr" class="alert alert-danger lbl-msg mt-3" hidden></p>
@@ -65,13 +65,13 @@
     <div class="row" id="lblEditors" hidden>
       <div class="col-12 col-lg-6 mb-3">
         <div class="card h-100">
-          <div class="card-header d-flex justify-content-between align-items-center">Alias of this address <small class="text-muted" id="lblAliasCount"></small></div>
+          <div class="card-header primary-color card-header-text py-2 d-flex justify-content-between align-items-center"><span class="h6 h6-responsive mb-0"><i class="fas fa-tag" aria-hidden="true"></i> ALIAS OF THIS ADDRESS</span><small class="text-white-50 lbl-num" id="lblAliasCount"></small></div>
           <div class="card-body" id="lblAliasBody">
             <div class="lbl-chips mb-3" id="lblAliasChip" aria-live="polite"></div>
             <div class="input-group mb-2">
               <label class="sr-only" for="lblAlias">New alias</label>
               <input type="text" id="lblAlias" class="form-control" placeholder="Set an alias" maxlength="64" spellcheck="false">
-              <div class="input-group-append"><button id="lblAliasSet" type="button" class="btn btn-outline-primary btn-md m-0">Set</button></div>
+              <div class="input-group-append"><button id="lblAliasSet" type="button" class="btn btn-info btn-md m-0">Set</button></div>
             </div>
             <div class="mb-2 lbl-hint">Start with
               <button type="button" class="btn btn-sm btn-light lbl-pfx m-0 ml-1" data-prefix="#" data-target="lblAlias"># mining pool</button>
@@ -79,7 +79,7 @@
             </div>
             <p id="lblAliasErr" class="alert alert-danger lbl-msg mb-2" hidden></p>
             <p id="lblAliasWarn" class="alert alert-warning lbl-msg mb-2" hidden></p>
-            <button id="lblAliasSave" type="button" class="btn btn-primary btn-md mx-0 my-2">Save alias</button>
+            <button id="lblAliasSave" type="button" class="btn btn-info btn-md mx-0 my-2">Save alias</button>
             <p class="lbl-hint">Mining pools: put the <code>#</code> label on the payout address, not the group. A pool's address can sit inside an exchange's group.</p>
           </div>
           <div class="card-body" id="lblAliasOff" hidden>
@@ -89,20 +89,20 @@
       </div>
       <div class="col-12 col-lg-6 mb-3">
         <div class="card h-100">
-          <div class="card-header d-flex justify-content-between align-items-center">Tags of the group <small class="text-muted" id="lblTagCount"></small></div>
+          <div class="card-header primary-color card-header-text py-2 d-flex justify-content-between align-items-center"><span class="h6 h6-responsive mb-0"><i class="fas fa-tags" aria-hidden="true"></i> TAGS OF THE GROUP</span><small class="text-white-50 lbl-num" id="lblTagCount"></small></div>
           <div class="card-body" id="lblTagBody">
             <div class="lbl-chips mb-3" id="lblTagChips" aria-live="polite"></div>
             <div class="input-group mb-2">
               <label class="sr-only" for="lblTag">New tag</label>
               <input type="text" id="lblTag" class="form-control" placeholder="Add a tag" maxlength="64" spellcheck="false">
-              <div class="input-group-append"><button id="lblTagAdd" type="button" class="btn btn-outline-primary btn-md m-0">Add</button></div>
+              <div class="input-group-append"><button id="lblTagAdd" type="button" class="btn btn-info btn-md m-0">Add</button></div>
             </div>
             <div class="mb-2 lbl-hint">Start with
               <button type="button" class="btn btn-sm btn-light lbl-pfx m-0 ml-1" data-prefix="@" data-target="lblTag">@ exchange</button>
             </div>
             <p id="lblTagErr" class="alert alert-danger lbl-msg mb-2" hidden></p>
             <p id="lblTagWarn" class="alert alert-warning lbl-msg mb-2" hidden></p>
-            <button id="lblTagSave" type="button" class="btn btn-primary btn-md mx-0 my-2">Save tags</button>
+            <button id="lblTagSave" type="button" class="btn btn-info btn-md mx-0 my-2">Save tags</button>
             <p class="lbl-hint">Tags apply to every address in the group. When the loader joins two groups, their tags are combined.</p>
           </div>
           <div class="card-body" id="lblTagOff" hidden>
@@ -112,16 +112,19 @@
       </div>
     </div>
 
-    <div class="card mb-3">
-      <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
-        <ul class="nav nav-tabs card-header-tabs" role="tablist">
-          <li class="nav-item"><a class="nav-link active" id="lblTabAliases" href="#" role="tab" aria-selected="true">Aliases <span class="text-muted" id="lblNA"></span></a></li>
-          <li class="nav-item"><a class="nav-link" id="lblTabTags" href="#" role="tab" aria-selected="false">Group tags <span class="text-muted" id="lblNT"></span></a></li>
-        </ul>
-        <label class="sr-only" for="lblFilter">Filter labels</label>
-        <input type="text" id="lblFilter" class="form-control form-control-sm my-1" style="max-width: 14rem;" placeholder="Filter" spellcheck="false">
+    <div class="card col-12 px-0 mb-4">
+      <div class="card-header primary-color card-header-text py-2 d-flex justify-content-between align-items-center"><span class="h6 h6-responsive mb-0"><i class="fas fa-list" aria-hidden="true"></i> ALL LABELS</span></div>
+      <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+          <div class="btn-group btn-group-sm my-1" role="group" aria-label="Label lists">
+            <button type="button" class="btn btn-info m-0" id="lblTabAliases" aria-pressed="true">Aliases <span id="lblNA"></span></button>
+            <button type="button" class="btn btn-light m-0" id="lblTabTags" aria-pressed="false">Group tags <span id="lblNT"></span></button>
+          </div>
+          <label class="sr-only" for="lblFilter">Filter labels</label>
+          <input type="text" id="lblFilter" class="form-control form-control-sm my-1" style="max-width: 14rem;" placeholder="Filter" spellcheck="false">
+        </div>
+        <div id="lblList"><p class="lbl-hint">Loading…</p></div>
       </div>
-      <div class="card-body" id="lblList"><p class="lbl-hint">Loading…</p></div>
     </div>
     <p class="lbl-hint mb-4">Mining charts and the overview are cached. Label changes appear there after the next metrics run.</p>
   </section>
@@ -296,9 +299,9 @@
         if (pending === k) {
           act.append($("<span class='text-danger small mr-2'>").text("Remove " + r[key] + "?"),
             $("<button type='button' class='btn btn-sm btn-danger m-0 mr-1'>").text("Remove").on("click", function () { removeRow(r); }),
-            $("<button type='button' class='btn btn-sm btn-outline-primary m-0'>").text("Keep").on("click", function () { pending = null; renderList(); }));
+            $("<button type='button' class='btn btn-sm btn-light m-0'>").text("Keep").on("click", function () { pending = null; renderList(); }));
         } else {
-          act.append($("<button type='button' class='btn btn-sm btn-outline-primary m-0 mr-1'>").text("Edit").on("click", function () {
+          act.append($("<button type='button' class='btn btn-sm btn-info m-0 mr-1'>").text("Edit").on("click", function () {
               lookup(r.id); $("html, body").animate({ scrollTop: $("#lblFind").offset().top - 80 }, 200); }),
             $("<button type='button' class='btn btn-sm btn-link text-danger m-0'>").text("Remove").on("click", function () { pending = k; renderList(); }));
         }
@@ -336,8 +339,8 @@
     }
     function setTab(t) {
       tab = t; pending = null;
-      $("#lblTabAliases").toggleClass("active", t === "aliases").attr("aria-selected", t === "aliases");
-      $("#lblTabTags").toggleClass("active", t === "tags").attr("aria-selected", t === "tags");
+      $("#lblTabAliases").toggleClass("btn-info", t === "aliases").toggleClass("btn-light", t !== "aliases").attr("aria-pressed", t === "aliases");
+      $("#lblTabTags").toggleClass("btn-info", t === "tags").toggleClass("btn-light", t !== "tags").attr("aria-pressed", t === "tags");
       renderList();
     }
     $("#lblTabAliases").on("click", function (e) { e.preventDefault(); setTab("aliases"); });
