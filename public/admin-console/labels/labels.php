@@ -149,7 +149,6 @@
       if (Array.from(v).length > 32) return "Use at most 32 characters.";
       return "";
     }
-    function shortId(s) { return s.length > 30 ? s.slice(0, 17) + "…" + s.slice(-6) : s; }
     function link(path, id, text) {
       return $("<a target='_blank' rel='noopener' class='primary-text'>").attr("href", ROOT + path + encodeURIComponent(id)).text(text || id).append(" ↗");
     }
@@ -303,7 +302,7 @@
         $("<th class='text-right'>").text("Balance (" + COIN + ")"), $("<th>"))));
       shown.forEach(function (r, i) {
         var k = tab + ":" + r.id + ":" + r[key];
-        var idCell = tab === "aliases" ? link("/address/?address=", r.id) : link("/addressgroup/?groupid=", r.id, shortId(r.id)).attr("title", r.id);
+        var idCell = tab === "aliases" ? link("/address/?address=", r.id) : link("/addressgroup/?groupid=", r.id);
         var act = $("<td class='text-right text-nowrap'>");
         if (pending === k) {
           act.append($("<span class='text-danger small mr-2'>").text("Remove " + r[key] + "?"),
