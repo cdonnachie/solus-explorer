@@ -22,6 +22,9 @@
       <li class="nav-item text-uppercase menu-nav" id="admin-console">
         <a class="nav-link" href="<?php echo $settings["explorer_address"]."/".ADMIN_PATH;?>/console/">Console</a>
       </li>
+      <li class="nav-item text-uppercase menu-nav" id="admin-labels">
+        <a class="nav-link" href="<?php echo $settings["explorer_address"]."/".ADMIN_PATH;?>/labels/">Labels</a>
+      </li>
       <li class="nav-item text-uppercase menu-nav" id="admin-logout">
         <a class="nav-link" href="<?php echo $settings["explorer_address"]."/".ADMIN_PATH;?>/logout.php">Log out</a>
       </li>

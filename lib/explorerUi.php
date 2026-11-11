@@ -49,6 +49,19 @@ use WebSocket\Exception;
       if ($text !== '' && strpos("=+-@\t\r", $text[0]) !== false) { $text = "'".$text; }
       return '"'.str_replace('"', '""', $text).'"';
   }
+  // '' when a new alias or tag is acceptable, otherwise the message for the admin
+  function ui_labelError(string $label) : string {
+      if ($label === '') { return 'Enter a label.'; }
+      if (!preg_match('//u', $label)) { return 'The label is not valid UTF-8 text.'; }
+      if ($label !== trim($label)) { return 'Remove the spaces at the start or end.'; }
+      if (preg_match('/[<>"\'\p{Cc}]/u', $label)) { return 'Labels can\'t contain < > " \' or control characters.'; }
+      if (preg_match_all('/./su', $label) > 32) { return 'Use at most 32 characters.'; }
+      return '';
+  }
+  // case-insensitive key for spotting duplicate tags; without mbstring only ASCII letters fold
+  function ui_labelKey(string $label) : string {
+      return function_exists('mb_strtolower') ? mb_strtolower($label, 'UTF-8') : strtolower($label);
+  }
 
   // Utilities
     function milliseconds() {

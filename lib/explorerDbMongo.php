@@ -2638,6 +2638,53 @@ use Decimal\Decimal;
         }
         return $res;
     }
+    // --- Address labels (admin Labels page) ---
+    // The list queries repeat the partial filter of the labels indexes, so the planner can use them.
+
+    function mongo_getLabelAddress(string $address){
+        $q = new MongoDB\Driver\Query(['_id' => $address], ['projection' => ['balance' => 1, 'group_id' => 1, 'alias' => 1]]);
+        return mongo_execDbQuery($q, "ADDRESSES")->toArray()[0] ?? null;
+    }
+    function mongo_getLabelGroup(string $group_id){
+        $q = new MongoDB\Driver\Query(['_id' => $group_id], ['projection' => ['balance' => 1, 'address_count' => 1, 'tags' => 1]]);
+        return mongo_execDbQuery($q, "ADDRESSGROUPS")->toArray()[0] ?? null;
+    }
+    function mongo_setAddressAlias(string $address, string $alias) : bool {
+        global $dbm, $settings;
+        $bulk = new MongoDB\Driver\BulkWrite();
+        $bulk->update(['_id' => $address], $alias === '' ? ['$unset' => ['alias' => '']] : ['$set' => ['alias' => $alias]]);
+        return $dbm->executeBulkWrite($settings['db_name'].".ADDRESSES", $bulk)->getMatchedCount() === 1;
+    }
+    // An empty list removes the field, so the group drops out of the partial tags index.
+    function mongo_setGroupTags(string $group_id, array $tags) : bool {
+        global $dbm, $settings;
+        $bulk = new MongoDB\Driver\BulkWrite();
+        $bulk->update(['_id' => $group_id], count($tags) === 0 ? ['$unset' => ['tags' => '']] : ['$set' => ['tags' => array_values($tags)]]);
+        return $dbm->executeBulkWrite($settings['db_name'].".ADDRESSGROUPS", $bulk)->getMatchedCount() === 1;
+    }
+    // Which of the two labels indexes exist: ['alias' => bool, 'tags' => bool]
+    function mongo_getLabelIndexes() : array {
+        global $dbm, $settings;
+        $has = function (string $col, string $field) use ($dbm, $settings) : bool {
+            foreach ($dbm->executeCommand($settings['db_name'], new MongoDB\Driver\Command(['listIndexes' => $col])) as $ix) {
+                $keys = array_keys((array)$ix->key);
+                if ($keys === [$field] && isset($ix->partialFilterExpression)) { return true; }
+            }
+            return false;
+        };
+        return ['alias' => $has('ADDRESSES', 'alias'), 'tags' => $has('ADDRESSGROUPS', 'tags')];
+    }
+    function mongo_getLabelAliases(int $limit){
+        $q = new MongoDB\Driver\Query(['alias' => ['$type' => 'string']], mongo_webTimeLimit([
+            'projection' => ['alias' => 1, 'balance' => 1], 'sort' => ['alias' => 1], 'limit' => $limit]));
+        return mongo_execDbQuery($q, "ADDRESSES")->toArray();
+    }
+    function mongo_getLabelGroups(int $limit){
+        $q = new MongoDB\Driver\Query(['tags' => ['$exists' => true]], mongo_webTimeLimit([
+            'projection' => ['tags' => 1, 'address_count' => 1, 'balance' => 1], 'limit' => $limit]));
+        return mongo_execDbQuery($q, "ADDRESSGROUPS")->toArray();
+    }
+
     function mongo_getAddressGroupByAddress($address){ // from ADDRESSGROUPS
         $query = new MongoDB\Driver\Query(
             ['_id' => $address], // query (empty: select all)

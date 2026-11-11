@@ -282,6 +282,14 @@ use Decimal\Decimal;
         global $settings;
         return mongo_getAddressTags($address) ;
     }
+    // Address labels (admin Labels page)
+    function db_getLabelAddress(string $address) { return mongo_getLabelAddress($address); }
+    function db_getLabelGroup(string $group_id) { return mongo_getLabelGroup($group_id); }
+    function db_setAddressAlias(string $address, string $alias) : bool { return mongo_setAddressAlias($address, $alias); }
+    function db_setGroupTags(string $group_id, array $tags) : bool { return mongo_setGroupTags($group_id, $tags); }
+    function db_getLabelIndexes() : array { return mongo_getLabelIndexes(); }
+    function db_getLabelAliases(int $limit) { return mongo_getLabelAliases($limit); }
+    function db_getLabelGroups(int $limit) { return mongo_getLabelGroups($limit); }
     function db_getAddressGroupByAddress($address) // from ADDRESSGROUPS
     {
         global $settings;
