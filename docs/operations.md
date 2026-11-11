@@ -139,8 +139,8 @@ address, transaction, movements, mining, staking, burned-coins, group and asset 
   When the loader joins two groups, their tags are combined.
 
 `/admin-console/labels/` edits both: look up an address or a group id (`csag-<coin>-…`),
-set or remove the alias, add or remove the group's tags, and save. Below that is a list
-of every alias and tag with a filter. A label has 1 to 32 characters, no spaces at the
+set or remove the alias, and add or remove the group's tags; each change is saved at
+once. Below that is a list of every alias and tag with a filter. A label has 1 to 32 characters, no spaces at the
 start or end, and none of `< > " '` or control characters; a group has at most 10 tags,
 and tags that differ only in case are kept once. Every page prints labels HTML-escaped,
 and CSV exports prefix a label starting with `= + - @` with `'` so spreadsheets don't
