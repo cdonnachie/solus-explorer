@@ -24,10 +24,9 @@
     $("#admin-labels").addClass("active");
   </script>
   <style>
-    .lbl-chips { display: flex; flex-wrap: wrap; gap: .4rem; min-height: 1.9rem; align-items: center; }
-    .lbl-chip { display: inline-flex; align-items: center; font-size: .85rem; font-weight: 500; padding: .3rem .25rem .3rem .55rem; }
-    .lbl-chip button { background: transparent; border: 0; color: inherit; font-size: 1rem; line-height: 1; padding: 0 .3rem; margin-left: .15rem; border-radius: .2rem; cursor: pointer; }
-    .lbl-chip button:hover, .lbl-chip button:focus { background: rgba(0,0,0,.15); outline: 0; }
+    .lbl-chips { min-height: 1.6rem; }
+    .lbl-x { background: none; border: 0; color: inherit; font: inherit; line-height: 1; padding: 0 0 0 .4em; cursor: pointer; opacity: .75; }
+    .lbl-x:hover, .lbl-x:focus { opacity: 1; outline: 0; }
     .lbl-pfx { font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace; text-transform: none; }
     .lbl-facts .row { padding: .5rem 0; border-top: 1px solid rgba(0,0,0,.06); align-items: baseline; }
     .lbl-facts .row:first-child { border-top: 0; }
@@ -79,8 +78,7 @@
             </div>
             <p id="lblAliasErr" class="alert alert-danger lbl-msg mb-2" hidden></p>
             <p id="lblAliasWarn" class="alert alert-warning lbl-msg mb-2" hidden></p>
-            <button id="lblAliasSave" type="button" class="btn btn-info btn-md mx-0 my-2">Save alias</button>
-            <p class="lbl-hint">Mining pools: put the <code>#</code> label on the payout address, not the group. A pool's address can sit inside an exchange's group.</p>
+            <p class="lbl-hint">Changes are saved at once. Mining pools: put the <code>#</code> label on the payout address, not the group. A pool's address can sit inside an exchange's group.</p>
           </div>
           <div class="card-body" id="lblAliasOff" hidden>
             <p class="lbl-hint">An alias belongs to one address. Look up an address of this group to set its alias.</p>
@@ -102,8 +100,7 @@
             </div>
             <p id="lblTagErr" class="alert alert-danger lbl-msg mb-2" hidden></p>
             <p id="lblTagWarn" class="alert alert-warning lbl-msg mb-2" hidden></p>
-            <button id="lblTagSave" type="button" class="btn btn-info btn-md mx-0 my-2">Save tags</button>
-            <p class="lbl-hint">Tags apply to every address in the group. When the loader joins two groups, their tags are combined.</p>
+            <p class="lbl-hint">Changes are saved at once. Tags apply to every address in the group. When the loader joins two groups, their tags are combined.</p>
           </div>
           <div class="card-body" id="lblTagOff" hidden>
             <p class="lbl-hint">This address has no group yet, so it can't carry group tags.</p>
@@ -149,8 +146,8 @@
       return $("<a target='_blank' rel='noopener' class='primary-text'>").attr("href", ROOT + path + encodeURIComponent(id)).text(text || id).append(" ↗");
     }
     function chip(text, cls, onRemove, label) {
-      var c = $("<span class='badge lbl-chip'>").addClass(cls).text(text);
-      return c.append($("<button type='button'>").attr("aria-label", label + " " + text).text("×").on("click", onRemove));
+      var c = $("<span>").addClass("badge " + cls + " mr-1 mb-1").text(text);
+      return c.append($("<button type='button' class='lbl-x'>").attr("aria-label", label + " " + text).text("×").on("click", onRemove));
     }
     function msg(el, text) { $(el).text(text || "").prop("hidden", !text); }
     function post(data) { return $.ajax({ url: "labelsup.php", type: "POST", dataType: "json", data: data }); }
@@ -204,10 +201,31 @@
     }
     $("#lblFind").on("submit", function (e) { e.preventDefault(); lookup($.trim($("#lblId").val())); });
 
-    // ---- alias ----
+    // ---- alias and tags: every change is stored at once ----
+    function busy(on) { $("#lblEditors").find("button, input").prop("disabled", on); if (!on) renderTags(); }
+    function saveAlias(value) {
+      busy(true);
+      post({ action: "alias", id: cur.address.id, alias: value }).done(function (res) {
+        if (res.status === "ok") { load(res); toast(res.message); refreshList(); }
+        else { msg("#lblAliasErr", res.error); }
+      }).fail(function (xhr) { msg("#lblAliasErr", failed(xhr)); })
+        .always(function () { busy(false); });
+    }
+    function saveTags(tags) {
+      var g = cur.kind === "group" ? cur.group : cur.address.group;
+      busy(true);
+      post({ action: "tags", id: g.id, tags: JSON.stringify(tags) }).done(function (res) {
+        if (res.status === "ok") {
+          if (cur.kind === "address") { cur.address.group = res.group; load(cur); } else { load(res); }
+          toast(res.message); refreshList();
+        } else { msg("#lblTagErr", res.error); }
+      }).fail(function (xhr) { msg("#lblTagErr", failed(xhr)); })
+        .always(function () { busy(false); });
+    }
+
     function renderAlias() {
       var box = $("#lblAliasChip").empty();
-      if (draftAlias) { box.append(chip(draftAlias, "badge-info", function () { draftAlias = ""; renderAlias(); }, "Remove alias")); }
+      if (draftAlias) { box.append(chip(draftAlias, "badge-info", function () { saveAlias(""); }, "Remove alias")); }
       else { box.append($("<span class='lbl-hint'>").text("No alias yet.")); }
       $("#lblAliasCount").text((draftAlias ? 1 : 0) + " / 1");
       $("#lblAliasSet").text(draftAlias ? "Replace" : "Set");
@@ -219,22 +237,15 @@
       msg("#lblAliasWarn", !e && v.charAt(0) === "@" ? "Exchanges are usually tagged on the group. An alias is fine if you only want to name this deposit address." : "");
       return !e && !!v;
     }
-    function setAlias() { if (!aliasInput()) return; draftAlias = $("#lblAlias").val(); $("#lblAlias").val(""); aliasInput(); renderAlias(); }
+    function setAlias() { if (aliasInput()) { saveAlias($("#lblAlias").val()); } }
     $("#lblAlias").on("input", aliasInput).on("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); setAlias(); } });
     $("#lblAliasSet").on("click", setAlias);
-    $("#lblAliasSave").on("click", function () {
-      var btn = $(this).prop("disabled", true);
-      post({ action: "alias", id: cur.address.id, alias: draftAlias }).done(function (res) {
-        if (res.status === "ok") { load(res); toast(res.message); refreshList(); }
-        else { msg("#lblAliasErr", res.error); }
-      }).fail(function (xhr) { msg("#lblAliasErr", failed(xhr)); })
-        .always(function () { btn.prop("disabled", false); });
-    });
 
-    // ---- tags ----
     function renderTags() {
       var box = $("#lblTagChips").empty();
-      draftTags.forEach(function (t, i) { box.append(chip(t, "badge-primary", function () { draftTags.splice(i, 1); renderTags(); }, "Remove tag")); });
+      draftTags.forEach(function (t, i) {
+        box.append(chip(t, "badge-primary", function () { saveTags(draftTags.filter(function (x, j) { return j !== i; })); }, "Remove tag"));
+      });
       if (!draftTags.length) { box.append($("<span class='lbl-hint'>").text("No tags yet.")); }
       $("#lblTagCount").text(draftTags.length + " / " + MAX_TAGS);
       $("#lblTagAdd").prop("disabled", draftTags.length >= MAX_TAGS);
@@ -247,19 +258,9 @@
       msg("#lblTagWarn", !e && v.charAt(0) === "#" ? "Pool labels usually go on the payout address alias, since a pool's address can sit inside an exchange's group. You can still add it here." : "");
       return !e && !!v;
     }
-    function addTag() { if (!tagInput() || draftTags.length >= MAX_TAGS) return; draftTags.push($("#lblTag").val()); $("#lblTag").val(""); tagInput(); renderTags(); }
+    function addTag() { if (tagInput() && draftTags.length < MAX_TAGS) { saveTags(draftTags.concat([$("#lblTag").val()])); } }
     $("#lblTag").on("input", tagInput).on("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addTag(); } });
     $("#lblTagAdd").on("click", addTag);
-    $("#lblTagSave").on("click", function () {
-      var g = cur.kind === "group" ? cur.group : cur.address.group, btn = $(this).prop("disabled", true);
-      post({ action: "tags", id: g.id, tags: JSON.stringify(draftTags) }).done(function (res) {
-        if (res.status === "ok") {
-          if (cur.kind === "address") { cur.address.group = res.group; load(cur); } else { load(res); }
-          toast(res.message); refreshList();
-        } else { msg("#lblTagErr", res.error); }
-      }).fail(function (xhr) { msg("#lblTagErr", failed(xhr)); })
-        .always(function () { btn.prop("disabled", false); });
-    });
 
     $(".lbl-pfx").on("click", function () {
       var t = $("#" + $(this).data("target")), v = t.val().replace(/^[#@]/, "");
@@ -306,7 +307,7 @@
             $("<button type='button' class='btn btn-sm btn-link text-danger m-0'>").text("Remove").on("click", function () { pending = k; renderList(); }));
         }
         tb.append($("<tr>").append(
-          $("<td>").append($("<span class='badge'>").addClass(tab === "aliases" ? "badge-info" : "badge-primary").text(r[key])),
+          $("<td>").append($("<span>").addClass("badge mb-1 " + (tab === "aliases" ? "badge-info" : "badge-primary")).text(r[key])),
           $("<td class='lbl-id'>").append(idCell),
           $("<td class='lbl-num text-right text-muted'>").text(tab === "aliases" ? "" : r.count.toLocaleString("en-US")),
           $("<td class='lbl-num text-right'>").text(r.balance), act));
