@@ -27,7 +27,9 @@
     .lbl-chips { min-height: 1.6rem; }
     .lbl-x { background: none; border: 0; color: inherit; font: inherit; line-height: 1; padding: 0 0 0 .4em; cursor: pointer; opacity: .75; }
     .lbl-x:hover, .lbl-x:focus { opacity: 1; outline: 0; }
-    .lbl-pfx { font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace; text-transform: none; }
+    .lbl-pfx { font: 500 .75rem/1 SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: #f1f5f8; border: 1px solid #cfdde6; border-radius: 1rem; padding: .3rem .6rem; margin-left: .3rem; cursor: pointer; }
+    .lbl-pfx:hover, .lbl-pfx:focus { background: #e4edf3; outline: 0; }
+    .lbl-pfx:disabled { opacity: .5; cursor: default; }
     .lbl-facts .row { padding: .5rem 0; border-top: 1px solid rgba(0,0,0,.06); align-items: baseline; }
     .lbl-facts .row:first-child { border-top: 0; }
     .lbl-facts .lbl-k { font-size: .7rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: #6c757d; }
@@ -73,8 +75,8 @@
               <div class="input-group-append"><button id="lblAliasSet" type="button" class="btn btn-info btn-md m-0">Set</button></div>
             </div>
             <div class="mb-2 lbl-hint">Start with
-              <button type="button" class="btn btn-sm btn-light lbl-pfx m-0 ml-1" data-prefix="#" data-target="lblAlias"># mining pool</button>
-              <button type="button" class="btn btn-sm btn-light lbl-pfx m-0 ml-1" data-prefix="@" data-target="lblAlias">@ exchange</button>
+              <button type="button" class="lbl-pfx primary-text" data-prefix="#" data-target="lblAlias"># mining pool</button>
+              <button type="button" class="lbl-pfx primary-text" data-prefix="@" data-target="lblAlias">@ exchange</button>
             </div>
             <p id="lblAliasErr" class="alert alert-danger lbl-msg mb-2" hidden></p>
             <p id="lblAliasWarn" class="alert alert-warning lbl-msg mb-2" hidden></p>
@@ -96,7 +98,7 @@
               <div class="input-group-append"><button id="lblTagAdd" type="button" class="btn btn-info btn-md m-0">Add</button></div>
             </div>
             <div class="mb-2 lbl-hint">Start with
-              <button type="button" class="btn btn-sm btn-light lbl-pfx m-0 ml-1" data-prefix="@" data-target="lblTag">@ exchange</button>
+              <button type="button" class="lbl-pfx primary-text" data-prefix="@" data-target="lblTag">@ exchange</button>
             </div>
             <p id="lblTagErr" class="alert alert-danger lbl-msg mb-2" hidden></p>
             <p id="lblTagWarn" class="alert alert-warning lbl-msg mb-2" hidden></p>
