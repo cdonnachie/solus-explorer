@@ -104,6 +104,7 @@ the check. Self-hosted installs keep `subscription_enabled => false`.
 | `/admin-console/usestats/` | page, data-provider and API timing and usage statistics |
 | `/admin-console/loaderlog/` | per-block loader log with timer details |
 | `/admin-console/console/` | daemon RPC console for read-only methods (the list is `sec_consoleMethodAllowed()` in `lib/explorerSec.php`); `setban`, `disconnectnode` and `clearbanned` need `force=true`, everything else is refused |
+| `/admin-console/labels/` | address aliases and address-group tags, see [Address labels](#address-labels) |
 
 Accounts live in the `USERS` collection. Create or reset one with
 `cd script && php createAdminUser.php`; an existing user name is updated, and the
@@ -117,7 +118,7 @@ A session ends after `session_inactivity_sec` of inactivity, after `session_max_
 in any case, when the browser's user agent changes, on *Log out*, and when the account's
 password is changed. After 10 failed logins from one address, or 20 for one user name,
 within 15 minutes further attempts are refused until the window passes (collection
-`LOGINFAILURES`). Login and console requests must carry the explorer's own `Origin`.
+`LOGINFAILURES`). Login, console and labels requests must carry the explorer's own `Origin`.
 For defence in depth, give the explorer an RPC user limited by `rpcwhitelist`, or run
 the daemon with `disablewallet=1`. Restrict `/admin-console/` by IP in Apache if the
 explorer is public:
@@ -127,6 +128,65 @@ explorer is public:
     Require ip 203.0.113.0/24
 </Location>
 ```
+
+### Address labels
+
+The explorer shows two kinds of labels as badges next to addresses, on the overview,
+address, transaction, movements, mining, staking, burned-coins, group and asset pages:
+
+* an **alias** names one address (`ADDRESSES.alias`);
+* **tags** describe an address group and so every address in it (`ADDRESSGROUPS.tags`).
+  When the loader joins two groups, their tags are combined.
+
+`/admin-console/labels/` edits both: look up an address or a group id (`csag-<coin>-…`),
+set or remove the alias, add or remove the group's tags, and save. Below that is a list
+of every alias and tag with a filter. A label has 1 to 32 characters, no spaces at the
+start or end, and none of `< > " '` or control characters; a group has at most 10 tags,
+and tags that differ only in case are kept once. Every page prints labels HTML-escaped,
+and CSV exports prefix a label starting with `= + - @` with `'` so spreadsheets don't
+read it as a formula.
+
+Conventions, suggested by the page but not enforced:
+
+| Prefix | Meaning | Put it on |
+|---|---|---|
+| `#` | mining pool, e.g. `#2Miners` | the payout address alias; a pool's address can sit inside an exchange's group, so a group tag would label the exchange's other addresses too |
+| `@` | exchange, e.g. `@Binance` | the group, as a tag; one exchange often owns several groups, tag each of them |
+
+The mining page names a block winner by its alias first, then by its group's first tag.
+
+The list needs two partial indexes. The loader never builds them, so create them once
+in `mongosh` on the explorer's database (`use <db_name>`); the build runs in the
+background without stopping the loader and takes a few minutes on a large chain. Until
+then the list shows these commands, and lookup and editing work without them.
+
+```js
+db.ADDRESSES.createIndex({ alias: 1 },
+  { name: "alias_labels", partialFilterExpression: { alias: { $type: "string" } } })
+db.ADDRESSGROUPS.createIndex({ tags: 1 },
+  { name: "tags_labels", partialFilterExpression: { tags: { $exists: true } } })
+```
+
+The same edits in `mongosh`, for scripts or bulk changes (check the label rules above
+yourself; the page is the only place that enforces them):
+
+```js
+db.ADDRESSES.updateOne({ _id: "<address>" }, { $set: { alias: "#2Miners" } })
+db.ADDRESSES.updateOne({ _id: "<address>" }, { $unset: { alias: "" } })
+db.ADDRESSGROUPS.updateOne({ _id: "<group id>" }, { $addToSet: { tags: "@Binance" } })
+db.ADDRESSGROUPS.updateOne({ _id: "<group id>" }, { $pull: { tags: "@Binance" } })
+```
+
+Known limits:
+
+* A reorg rollback restores the earlier copy of each group the rolled-back blocks
+  touched, so a tag edited on such a group after those blocks can revert. Check the
+  list after a deep reorg.
+* A tag edit made at the moment the loader joins that group into another can be lost.
+  The page reads the record again after saving, so a lost edit is visible.
+* Mining charts and the overview are cached; label changes show there after the next
+  metrics run.
+* No edit history is kept.
 
 ## 3. Logs and metrics
 
