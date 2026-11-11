@@ -24,7 +24,8 @@
     $("#admin-labels").addClass("active");
   </script>
   <style>
-    .lbl-chips { min-height: 1.6rem; }
+    .lbl-chips { min-height: 1.9rem; }
+    #lblEditors .badge, #lblList .badge { font-size: .9rem; padding: .35em .6em; }
     .lbl-x { background: none; border: 0; color: inherit; font: inherit; line-height: 1; padding: 0 0 0 .4em; cursor: pointer; opacity: .75; }
     .lbl-x:hover, .lbl-x:focus { opacity: 1; outline: 0; }
     .lbl-pfx { font: 500 .75rem/1 SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: #f1f5f8; border: 1px solid #cfdde6; border-radius: 1rem; padding: .3rem .6rem; margin-left: .3rem; cursor: pointer; }
