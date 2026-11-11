@@ -27,7 +27,7 @@
     if(!empty($groupid)) {
       ini_set('memory_limit', '512M');
       $ams = db_getAddressesByGroupId($groupid, 100000, 0, array(), ['_id'=> 1, 'last_block'=> 1, 'balance' => 1, 'alias' => 1, 'passive_in' => 1, 'sent' => 1, 'received' => 1]); 
-      echo '"Address","Alias","Last Block","Balance","Received","Sent","Passive Income"';
+      echo '"Address","Alias","Last Block","Balance","Received","Sent","Passive Income"'.PHP_EOL;
       foreach($ams as $am) {
           $m = '';
           $atag = '';
