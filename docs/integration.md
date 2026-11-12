@@ -118,7 +118,7 @@ per-minute loaders of different coins do not start at the same second.
 
 The application emits its own `Content-Security-Policy`, `X-Frame-Options`,
 `Referrer-Policy`, `Permissions-Policy` and `X-Content-Type-Options` from
-`public/includes/header.php`. The CSP always allows amCharts, jQuery (Google
+`public/includes/layout_adstack.php`. The CSP always allows amCharts, jQuery (Google
 Hosted Libraries) and cdnjs, and adds Google Tag Manager, Cloudflare Insights and
 Trustpilot only when their settings are filled in, and the Sevio, Bitmedia,
 AdSense and InMobi domains only when ads are on. The host list is in
@@ -193,7 +193,7 @@ Rules:
   independent of consent. Handle consent inside the GTM container.
 * Ads and consent scripts are never loaded on `/admin-console/`.
 * New third-party domains used by a provider must be added to the CSP lists in
-  `public/includes/header.php` (`$ads_core`, `$sevio_partners`), otherwise the
+  `public/includes/layout_adstack.php` (`$ads_core`, `$sevio_partners`), otherwise the
   browser blocks them silently.
 
 ## 5. Linking to the explorer

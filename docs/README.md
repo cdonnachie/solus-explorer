@@ -12,6 +12,7 @@ DIP2 coins, Ravencoin-style assets). One checkout serves one coin. The code live
 | [integration.md](integration.md) | publish the explorer behind a reverse proxy, brand it, enable ads or analytics, link to it from a coin website |
 | [operations.md](operations.md) | run the loaders, handle reorgs, read logs, upgrade, troubleshoot |
 | [api.md](api.md) | consume the public HTTP API |
+| [json-contract.md](json-contract.md) | add or rewrite an internal JSON endpoint (`_dp/`, `_up/`) |
 | [examples/](examples/) | copy a firewall or Apache template |
 | [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) | need the version or license of a bundled or CDN-loaded library |
 

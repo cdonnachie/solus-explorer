@@ -1,0 +1,13 @@
+Options -Indexes
+
+# Everything in this folder is a layout fragment that a page script includes from
+# the filesystem. None of it is a page. Requested directly, header.php and the
+# layout_*.php partials returned HTTP 200 with a fragment of a document, which is
+# both thin indexable content and a confusing thing to serve, so deny them.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

@@ -167,7 +167,8 @@ to `bitshares.openledger.info`.
 | `theme_stylesheet` | `style-n.css` | File in `public/css/`. See [Creating a skin](#creating-a-skin). |
 | `explorer_skin` | `solus-skin` | Body class. Keep `solus-skin`. |
 | `nav_image` | `img/navback_hex_hd.jpg` | Side-menu background. |
-| `chart_colors`, `named_colors` | | Palettes used by charts. |
+| `skin_colors` | shipped skin values | The skin's colour tokens, emitted as `:root` custom properties before the stylesheets. Every token is optional; set only what you change, with no CSS edit. Full list in `ui_getSkinTokenDefaults()` (`lib/explorerUi.php`). See [Creating a skin](#creating-a-skin). Invalid values are ignored and fall back to the default. |
+| `chart_colors`, `named_colors` | | Palettes used by charts. `chart_colors` is also published to CSS as `--chart-1` … `--chart-N`. `named_colors` is read by chart code only and does **not** set the skin — use `skin_colors` for that. |
 | `amcharts_license_key` | `""` | Commercial amCharts 4 license key. Empty keeps the small amCharts logo on every chart, as the amCharts free license requires. Set it only if you hold a commercial amCharts 4 license; the footer then calls `am4core.addLicense()` before any chart is drawn. |
 | `is_oem` | false | Remove the Solus Explorer name from meta keywords and use the neutral side-menu background. |
 | `*_symbol` | FontAwesome classes | Icons for OP_RETURN, asset messages, dev fee, SPoW, masternode, DIP2, cold stake, airdrop, shield, MLC. |
@@ -181,17 +182,39 @@ to `bitshares.openledger.info`.
 
 ### Creating a skin
 
-The repository ships one skin, `public/css/style-n.css`. To give an explorer its own look:
+Skin colours live in `settings.php`, not in CSS. `public/css/style-n.css` paints with
+`var(--token)` throughout, and the tokens are emitted into every page from
+`skin_colors` before the stylesheets load. **Changing colours needs no CSS edit:**
 
-1. Copy it: `cp public/css/style-n.css public/css/<sym>-style-n.css`.
-2. Change the colour variables in the `:root` block at the top (`--primary`, `--info`,
-   `--dark`, `--body-background` and so on). The rest of the file uses these variables,
-   so most skins need no other change.
-3. Set `"theme_stylesheet" => "<sym>-style-n.css"` and keep `explorer_skin` at
-   `solus-skin`.
-4. Put the logo and favicon in `public/img/` and set `logo_image` and `favicon_path`.
+1. Set the tokens you want in `settings.php`:
+   ```php
+   "skin_colors" => [
+       "primary"     => "#3d799c",   // brand blue
+       "btn-primary" => "#ff4a67",   // pink action buttons
+       "navbar"      => "#3f5c80",
+   ],
+   ```
+   Every token is optional and defaults to the shipped value, so set only what changes.
+   The full list is `ui_getSkinTokenDefaults()` in `lib/explorerUi.php`.
+2. Put the logo and favicon in `public/img/` and set `logo_image` and `favicon_path`.
    Optionally set `nav_image` to a side-menu background in the same folder.
-5. Match `chart_colors` and `named_colors` to the new palette so charts fit the skin.
+3. Match `chart_colors` to the new palette so charts fit the skin. `chart_colors` is
+   also published to CSS as `--chart-1` … `--chart-N`.
+
+> **Two different "primary" colours.** `primary` is the brand blue used by
+> `.primary-color` and link hovers. `btn-primary` is the **pink** action-button accent,
+> because the skin re-skins Bootstrap's `.btn-primary`. To put the brand blue on a
+> control, use `.primary-color` or `var(--primary)` — not `.btn-primary`.
+
+A handful of single-use shades (focus rings and a few badge variants) are still literal
+values in `style-n.css`; they are listed nowhere because each is used once. Change them
+in a copy of the stylesheet if you need to.
+
+To restyle beyond colours, copy the stylesheet
+(`cp public/css/style-n.css public/css/<sym>-style-n.css`), set
+`"theme_stylesheet" => "<sym>-style-n.css"` and keep `explorer_skin` at `solus-skin`.
+A copied stylesheet may also declare its own `:root` to override the tokens from
+`settings.php`, since it loads after them.
 
 Skins and logos are configuration, like `settings.php`: keep them in your own
 deployment rather than in this repository.
@@ -237,10 +260,35 @@ Older per-coin files contain flat `provider`, `sevio_account_id`, `ads_units` an
 `ads_providers` keys. The current code ignores them; migrate to `ads_priority` plus
 `ads_config`.
 
+## Layout files
+
+Pages include one of two layout pairs. Everything both pairs share lives in
+`layout_*.php` partials, so markup is edited in one place.
+
+| File | Used by | Contains |
+|---|---|---|
+| `header.php` / `footer.php` | the 25 public pages | public CSP, ad slots, ad waterfall |
+| `header-admin.php` / `footer-admin.php` | `/admin-console/` | the strict admin CSP, no third parties |
+| `layout_head.php` | both | `<head>`: meta, title, canonical, Open Graph, skin tokens, stylesheets, jQuery |
+| `layout_sidenav.php` | both | side menu: logo, search, page links, socials, banners, operator badges |
+| `layout_toasts.php` | both | subscription-expiry notices |
+| `layout_navbar.php` | both | content wrapper, top navbar, top search bar |
+| `layout_footer_shared.php` | both | search-not-found modal, copyright |
+| `layout_scripts.php` | both | Bootstrap, DataTables, amCharts, beacon, document close |
+| `layout_adstack.php` | public only | ad/consent resolution and the public CSP, incl. `$ads_core` and `$sevio_partners` |
+| `layout_ads_slots.php` | public only | the five footer ad containers |
+| `layout_ads_waterfall.php` | public only | the per-slot provider waterfall |
+
+The split is why the admin console cannot serve ads: it is not a flag, the admin pair
+simply never loads the three ad files. Nothing in `public/includes/` is a page, and its
+`.htaccess` denies direct requests.
+
 ## External hosts and CSP
 
-The explorer sends its own `Content-Security-Policy` (built in
-`public/includes/header.php`). Browsers of visitors must be able to reach these hosts;
+The explorer sends its own `Content-Security-Policy`. The public pages build it in
+`public/includes/layout_adstack.php`, included by `public/includes/header.php`; the admin
+console builds its own in `public/includes/header-admin.php`. Browsers of visitors must be
+able to reach these hosts;
 if a corporate proxy, a CDN rule or a second CSP filters requests, allow them:
 
 | Host | Loaded | What |
@@ -251,17 +299,18 @@ if a corporate proxy, a CDN rule or a second CSP filters requests, allow them:
 | `www.googletagmanager.com` | `google_tag_id` set | Google Tag Manager |
 | `static.cloudflareinsights.com`, `cloudflareinsights.com` | `cloudflare_beacon_token` set | Cloudflare Web Analytics |
 | `widget.trustpilot.com` | `trustpilot` set | Trustpilot widget |
-| ad, consent and font hosts listed in `$ads_core` and `$sevio_partners` | `ads_enabled` true, never on `/admin-console/` | Ad waterfall and InMobi Choice |
+| ad, consent and font hosts listed in `$ads_core` and `$sevio_partners` (`layout_adstack.php`) | `ads_enabled` true, never on `/admin-console/` | Ad waterfall and InMobi Choice |
 
 The three library CDNs are pinned to exact versions and carry Subresource Integrity
 hashes, so a changed file is refused by the browser. To upgrade one, change the URL
-and the `integrity` value in `public/includes/header.php` (jQuery) or
-`public/includes/footer.php` (perfect-scrollbar, amCharts). A page that draws amCharts
-charts sets `$use_amcharts = true;` before including the footer.
+and the `integrity` value in `public/includes/layout_head.php` (jQuery) or
+`public/includes/layout_scripts.php` (perfect-scrollbar, amCharts). Both are shared by the
+public and admin layouts. A page that draws amCharts charts sets `$use_amcharts = true;`
+before including the footer.
 
 The public pages allow `'unsafe-inline'` and `'unsafe-eval'` scripts, because the ad
 and consent scripts need them. On an explorer without ads, the policy can be tightened
-in `header.php`. The admin area always gets a separate, strict policy: only the explorer
+in `layout_adstack.php`. The admin area always gets a separate, strict policy: only the explorer
 itself and the three library CDNs, no frames, `connect-src 'self'`, no `'unsafe-eval'`,
 and it cannot be embedded in other pages. Its inline scripts are still allowed, because
 the admin pages load HTML fragments that carry no nonce.

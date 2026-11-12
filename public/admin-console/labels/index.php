@@ -25,7 +25,7 @@
   else :
 ?>
 <?php
-  include_once __DIR__ . '/../../includes/header.php';
+  include_once __DIR__ . '/../../includes/header-admin.php';
 ?>
   <!--Main layout-->
   <main>
@@ -61,6 +61,6 @@
     });
   </script>
 <?php
-  include_once __DIR__ . '/../../includes/footer.php';
+  include_once __DIR__ . '/../../includes/footer-admin.php';
 ?>
 <?php endif; ?>

@@ -269,7 +269,7 @@ by hand are the only data that cannot be regenerated; `tools/exportTagsAndAliase
 | Pages render without styles | `explorer_address` wrong (links point elsewhere) or `theme_stylesheet` names a file missing from `public/css`. |
 | Admin login returns to the login page | Site not on HTTPS, or `cookie_domain` / `cookie_path` do not match the URL. |
 | Version, protocol, connections show "unknown" | `getinfo_method` is not `getinfo` or `getnetworkinfo`. |
-| Ads or charts blocked, console shows CSP errors | A second CSP is set by Apache or a CDN, or a provider uses a domain missing from the CSP lists in `public/includes/header.php`. |
+| Ads or charts blocked, console shows CSP errors | A second CSP is set by Apache or a CDN, or a provider uses a domain missing from the CSP lists in `public/includes/layout_adstack.php`. |
 | API answers `429 Too Many Requests` for the coin website | Add its IP to `api_unlimited_ip_addresses`. Behind a proxy use the exact `X-Forwarded-For` string. |
 | API answers 402 | Subscription "complete". Disable `subscription_enabled`. |
 | `Class "Decimal\Decimal" not found` | `decimal` extension missing for the CLI or Apache SAPI; check `php -m` and `phpenmod decimal`. |

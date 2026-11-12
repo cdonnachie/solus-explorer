@@ -24,7 +24,7 @@
     exit;
   else :
 ?>
-      <?php include_once __DIR__ . '/../includes/header.php'; ?>
+      <?php include_once __DIR__ . '/../includes/header-admin.php'; ?>
       <script  nonce="<?php echo $csp_nonce; ?>" type='text/javascript'>
         // Set Page Properties
         document.getElementById("pageName").innerHTML = "<?php echo $settings["title"] ?> - Administrative Access";
@@ -108,5 +108,5 @@
 ?>
 
 <?php
-  include_once __DIR__ . '/../includes/footer.php';
+  include_once __DIR__ . '/../includes/footer-admin.php';
 ?>
