@@ -174,12 +174,38 @@ function discover(string $base, int $timeout, bool $insecure, bool $quiet): arra
 {
     $d = ['height' => null, 'blockhash' => null, 'txid' => null, 'address' => null, 'groupid' => null];
 
-    $r = fetch("$base/api/getblockcount/", $timeout, $insecure);
+    /*
+     * The height must come from what is INDEXED, not from the chain. /api/getblockcount/
+     * is a straight passthrough to the daemon, so on an explorer that is still catching
+     * up it returns a height with no documents behind it -- and because an unknown block
+     * renders as a 200 soft 404 rather than a 404, every block and tx route then
+     * fingerprints an empty page and the run still reports OK. Measured on a deployment
+     * indexed to 894,260 of 5,386,545: five routes silently compared empty pages.
+     *
+     * /api/monitoring/getsummary/ carries database_last_block, which is
+     * db_getLastDbBlockNumber(). Prefer it, and fall back to the daemon count only when
+     * it is unavailable, warning that the dependent routes may not be real pages.
+     */
+    $r = fetch("$base/api/monitoring/getsummary/", $timeout, $insecure);
     if ($r['status'] === 200) {
         $j = json_decode($r['body'], true);
-        if (isset($j['blockcount'])) {
-            // step back a little so the tip cannot move mid-run
-            $d['height'] = max(0, (int)$j['blockcount'] - 10);
+        if (isset($j['database_last_block']) && is_numeric($j['database_last_block'])) {
+            $d['height'] = max(0, (int)$j['database_last_block'] - 10);
+        }
+    }
+    if ($d['height'] === null) {
+        $r = fetch("$base/api/getblockcount/", $timeout, $insecure);
+        if ($r['status'] === 200) {
+            $j = json_decode($r['body'], true);
+            if (isset($j['blockcount'])) {
+                // step back a little so the tip cannot move mid-run
+                $d['height'] = max(0, (int)$j['blockcount'] - 10);
+                if (!$quiet) {
+                    echo "WARNING: database_last_block unavailable; using the daemon's height.\n".
+                         "         If the explorer is still indexing, the block and tx routes\n".
+                         "         may fingerprint empty soft-404 pages.\n\n";
+                }
+            }
         }
     }
     if ($d['height'] !== null) {
