@@ -253,10 +253,49 @@ by hand are the only data that cannot be regenerated; `tools/exportTagsAndAliase
 | `script/createAdminUser.php` | `script/` | create or reset an admin user |
 | `script/gencert.sh <fqdn>` | any | self-signed ED25519 certificate for an upstream listener |
 | `script/shadowBackfill.php [--yes]` | any | Gold Rush backfill |
+| `script/refreshCoinbaseTags.php` | any | recompute `BLOCKS.coinbase_tag` on indexed blocks, no reindex |
 | `tools/vwap_recalc.php` | `tools/` | back-fill VWAP on old `MARKETS` records |
 | `tools/exportTagsAndAliases.php` | `tools/` | export hand-entered tags and aliases |
 | `tools/sip041-sip061_migration.php` | any | one-off migration: block fee totals and `type_block_ix_desc` index |
 | `integrity.sh [file ...]` | repo root | print SRI hashes (sha384) for the given files, or for every file in `public/js`, after replacing a library |
+
+### Refreshing coinbase tags
+
+`BLOCKS.coinbase_tag` holds the miner tag extracted from the coinbase input script
+while the block was indexed. Only the extracted text is stored, so when the
+extraction improves, blocks already in the database keep the older value. This
+script recomputes the field in place against the daemon, with no reindex:
+
+```bash
+cd /var/www/<coin>
+php script/refreshCoinbaseTags.php --dry-run            # report, write nothing
+php script/refreshCoinbaseTags.php                      # apply
+php script/refreshCoinbaseTags.php --only-missing       # top up blocks with no tag
+php script/refreshCoinbaseTags.php --from=0 --to=100000 # a height range
+```
+
+Points worth knowing before a long run:
+
+- **The daemon is required.** The coinbase script itself is not stored anywhere
+  (a `VINS` record keeps only the type and the literal address `Coinbase`), so the
+  tag cannot be recovered from the database alone. Nor is it in the coinbase
+  `OP_RETURN`: on a segwit chain that output is the BIP141 witness commitment and
+  carries no miner identity.
+- **One RPC call per block**, using `getblock(hash, 2)`. A daemon too old for
+  verbosity 2 is detected on the first block and falls back to
+  `getblock` + `getrawtransaction`, at roughly twice the cost.
+- **Safe to run while the loader runs.** Every write is matched on the block hash,
+  never the height, so a block replaced by a reorg mid-run updates nothing rather
+  than stamping a tag onto the wrong block.
+- **Only `coinbase_tag` is written**, and only on blocks whose recomputed value
+  differs, so a second run over an up-to-date range writes nothing.
+- **The mining page reads a cache** that `loaderMongo-blocks.php` rebuilds at the
+  end of every run, so the next cron pass publishes the new tags with no further
+  action.
+
+Expect roughly the RPC round-trip time per block: on a local node a few hundred
+blocks a second, so a multi-million-block chain is hours, not minutes. Use
+`--from`/`--to` to split it across runs.
 
 ## 7. Troubleshooting
 

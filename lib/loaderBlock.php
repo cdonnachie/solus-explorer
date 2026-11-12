@@ -200,13 +200,16 @@ function ldr_coinbaseTag($hex, $max_len = 120){
     // Pool software conventionally follows the height with a four-byte timestamp
     // push. Those bytes change every block and can all land in the printable range:
     // block 1000's was 0x612f4851, which read as "QH/a". Drop that push when it is
-    // present. A tag never begins with 0x04, so this cannot eat one.
-    if (strlen($raw) > 5 && ord($raw[0]) === 4) { $raw = substr($raw, 5); }
+    // present. A tag never begins with 0x04, so this cannot eat one. The bound is
+    // >= because the push is five bytes including its opcode: a script that ends
+    // here carries no tag at all, and must yield null rather than its timestamp.
+    if (strlen($raw) >= 5 && ord($raw[0]) === 4) { $raw = substr($raw, 5); }
     // The extranonce follows as an eight-byte push: counter and nonce data, which
     // is printable often enough to form a run of its own. It is skipped only when
     // the content is mostly binary, so a pool whose tag is itself eight characters
-    // and pushed in this position is not eaten.
-    if (strlen($raw) > 9 && ord($raw[0]) === 8) {
+    // and pushed in this position is not eaten. Nine bytes including the opcode,
+    // hence >=, for the same reason as the timestamp bound above.
+    if (strlen($raw) >= 9 && ord($raw[0]) === 8) {
         $d = substr($raw, 1, 8);
         if (strlen(preg_replace('/[^\x20-\x7e]/', '', $d)) < 6) { $raw = substr($raw, 9); }
     }
