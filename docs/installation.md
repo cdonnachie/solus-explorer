@@ -1,6 +1,10 @@
 # Installation
 
 This guide installs one explorer for one coin on a fresh Ubuntu 22.04 or 24.04 host.
+If MongoDB and the coin daemon already run elsewhere, or the site sits behind
+Cloudflare, read [section 14](#14-split-deployment-behind-cloudflare) first: it lists
+which of the sections below to skip or replace.
+
 Placeholders used throughout:
 
 | Placeholder | Meaning | Example |
@@ -146,7 +150,8 @@ php -m | grep -E 'mongodb|decimal|curl'
 ```
 
 Do **not** add `Content-Security-Policy` or `X-Frame-Options` headers in Apache. The
-application sets its own headers in `public/includes/header.php`; duplicates break
+application sets its own headers in `public/includes/header.php` and
+`public/includes/header-admin.php`; duplicates break
 ads, charts and the admin area.
 
 ## 5. Coin daemon
@@ -427,3 +432,207 @@ ufw --force enable
 | `mongosh <db_name> --eval 'db.LOADERLOG.countDocuments()'` | grows with every block |
 
 Common first-run problems are listed in [operations.md](operations.md#7-troubleshooting).
+
+## 14. Split deployment behind Cloudflare
+
+Sections 1 to 13 install everything on one host. This section covers the other common
+layout: the explorer in its own container, with MongoDB and the coin daemon already
+running elsewhere, reached from the internet through Cloudflare.
+
+| Container | Holds | Reached on |
+|---|---|---|
+| explorer | Apache 2.4, mod_php 8.4, the checkout | a public address, Cloudflare in front |
+| mongodb | MongoDB, possibly shared with other services | private network only |
+| daemon | `<coind>` with `txindex=1` | private network only |
+
+Follow sections 1 to 13 as written, with these changes:
+
+| Section | Change |
+|---|---|
+| 3. MongoDB | Skip. See 14.2 for what the existing server must provide |
+| 4. PHP and Apache | Run in the explorer container only. See 14.3 |
+| 5. Coin daemon | Skip if the daemon already runs. `rpc_host` in `settings.php` is then its private address, not `127.0.0.1` |
+| 9. Apache virtual host | Replaced by 14.5. Do not run certbot |
+| 12. Firewall | Replaced by 14.7 |
+
+### 14.1 Explorer container
+
+2 vCPU and 4 GB RAM as in section 1, but the disk can be small: the database lives
+elsewhere, so the checkout, logs and PHP are all that is stored. 20 GB is ample.
+
+Use an **Ubuntu 24.04** image. The `decimal` extension is not packaged by any
+distribution; the Sury repository provides it, and the Ubuntu form of that repository
+(`ppa:ondrej/php`) is the one section 4 documents and tests. On Debian the same
+packages come from `deb.sury.org` with a different setup, so the commands in section 4
+do not apply unchanged.
+
+### 14.2 The MongoDB server
+
+`db_initMongoConnection()` always builds a credentialed URI, so **the server must have
+authorization enabled**. A MongoDB running without authentication cannot be used, even
+on a private network.
+
+On the MongoDB server, bind to the private address as well as loopback, and create the
+user from section 8:
+
+```bash
+sed -i 's/^  bindIp: .*/  bindIp: 127.0.0.1,<mongo private ip>/' /etc/mongod.conf
+# security.authorization must be "enabled"
+systemctl restart mongod
+```
+
+In `settings.php`, point at it:
+
+```php
+"db_host"  => "<mongo private ip>",
+"db_port"  => 27017,
+```
+
+`db_initMongoConnection()` builds `<protocol>://<user>:<pass>@<host>:<port>/<db_name>`,
+so the database name is in the URI and the authentication database defaults to it. With
+the user created as section 8 does it, in `db_name`, no `db_opts` entry is needed. Only
+a user created somewhere else, such as `admin`, needs
+`"db_opts" => ["authSource" => "admin"]`. A wrong `authSource` fails as an
+authentication error rather than a missing user, which is easy to misread.
+
+**Turning on authorization affects every other user of that server.** A shared MongoDB
+that other services reach without credentials will reject them the moment access
+control is enabled. Check what else is there before enabling it:
+
+```javascript
+db.adminCommand({ listDatabases: 1 }).databases.map(d => d.name)
+```
+
+If there are other tenants, give the explorer its own MongoDB rather than adding
+credentials to everything else. It is the only service here that cannot connect
+without them.
+
+### 14.3 PHP and Apache
+
+Install as in [section 4](#4-php-and-apache), omitting MongoDB. Then stop PHP 8.5
+being pulled in later by a dependency or an unattended upgrade:
+
+```bash
+printf 'Package: php8.5* libapache2-mod-php8.5\nPin: release *\nPin-Priority: -1\n' \
+  > /etc/apt/preferences.d/no-php85
+```
+
+PHP 8.5 parses this code without errors but is untested, and raises deprecations the
+supported versions do not.
+
+### 14.4 Real client addresses
+
+Behind Cloudflare every request arrives from a Cloudflare address. Left alone, that is
+what the usage statistics, the loader log and the admin area all record.
+
+Fix it in Apache with `mod_remoteip`, which rewrites the address before PHP sees it, so
+`REMOTE_ADDR`, `client_ip()` and the access log are all correct:
+
+```bash
+a2enmod remoteip
+{ echo 'RemoteIPHeader CF-Connecting-IP'
+  curl -s https://www.cloudflare.com/ips-v4 https://www.cloudflare.com/ips-v6 \
+    | sed 's/^/RemoteIPTrustedProxy /'
+} > /etc/apache2/conf-available/cloudflare-remoteip.conf
+a2enconf cloudflare-remoteip
+systemctl reload apache2
+```
+
+Re-run it when Cloudflare changes its ranges, which is rare but does happen.
+
+The alternative is to leave Apache alone and list the same ranges in
+`settings["trusted_proxies"]`; `client_ip()` then takes the right-most
+`X-Forwarded-For` entry that is not itself a trusted proxy. That corrects the
+application but not the Apache logs, so `mod_remoteip` is preferred. Do not use both.
+
+### 14.5 Virtual host and origin certificate
+
+Cloudflare terminates TLS for visitors; the origin needs its own certificate for the
+connection from Cloudflare. Use a Cloudflare **Origin CA** certificate (SSL/TLS →
+Origin Server → Create Certificate) rather than certbot: it is free, lasts fifteen
+years and needs no renewal job. It is trusted only by Cloudflare, which is the point.
+
+Save the certificate and key as `/etc/ssl/cloudflare/<fqdn>.pem` and `.key`, with the
+key `chmod 600`, then:
+
+```bash
+cat > /etc/apache2/sites-available/<fqdn>.conf <<'VH'
+<VirtualHost *:443>
+    ServerName <fqdn>
+    DocumentRoot /var/www/<sym>/public
+    ErrorDocument 404 /err/404/index.php
+    ErrorLog  ${APACHE_LOG_DIR}/<sym>-error.log
+    CustomLog ${APACHE_LOG_DIR}/<sym>-access.log combined
+
+    SSLEngine on
+    SSLCertificateFile    /etc/ssl/cloudflare/<fqdn>.pem
+    SSLCertificateKeyFile /etc/ssl/cloudflare/<fqdn>.key
+
+    <Directory /var/www/<sym>/public>
+        AllowOverride All
+        Require all granted
+        Options -MultiViews
+    </Directory>
+</VirtualHost>
+VH
+a2ensite <fqdn>.conf
+a2dissite 000-default.conf
+systemctl reload apache2
+```
+
+**`AllowOverride All` is required, not cosmetic.** The checkout ships five `.htaccess`
+files: four turn off directory listings, and `public/includes/.htaccess` denies direct
+requests for the layout partials. With `AllowOverride None` those files are ignored and
+`/includes/header.php` is served as a fragment of a page with status 200.
+
+There is no `:80` vhost, because with the SSL mode below Cloudflare only ever connects
+to the origin on 443, and no ACME challenge needs port 80. Add one only if the host
+also answers direct requests.
+
+For extra hardening, enable Authenticated Origin Pulls in Cloudflare and add
+`SSLVerifyClient require` with Cloudflare's origin-pull CA, so the origin refuses
+anything that did not arrive through Cloudflare.
+
+### 14.6 Cloudflare settings
+
+Four settings matter. All are available on the free plan.
+
+| Setting | Value | Why |
+|---|---|---|
+| SSL/TLS → Overview | **Full (strict)** | Flexible connects to the origin over HTTP, so `$_SERVER['HTTPS']` is empty and every canonical, `og:url` and absolute URL is emitted as `http://` |
+| Network → IP Geolocation | **On** | Supplies `CF-IPCountry`, which drives consent. Without it `ui_GetVisitorCountry()` returns empty, and an unknown country counts as in scope, so every visitor worldwide gets the consent wall |
+| Caching → a "Cache Everything" page or cache rule | **Never add one** | The application sends no `Cache-Control` on HTML and generates a fresh CSP nonce and request id per request. Cached pages would serve one nonce to every visitor, making the policy decorative, and collide request ids in the statistics. The default, caching static assets only, is correct |
+| Speed → Rocket Loader | **Off** | It defers and reorders scripts. The CMP must load synchronously in `<head>` before any vendor, and the ad waterfall binds `DOMContentLoaded` and guards itself with `dataset.waterfallDone`. Reordering them stops slots filling, silently and with no error |
+
+Leave Email Obfuscation off as well; it injects an inline script that the
+application's own Content-Security-Policy does not allow.
+
+### 14.7 Firewall
+
+The explorer container needs no inbound port open to the internet except 443, and that
+only from Cloudflare:
+
+```bash
+ufw default deny incoming
+ufw allow <ssh port>/tcp
+for net in $(curl -s https://www.cloudflare.com/ips-v4 https://www.cloudflare.com/ips-v6); do
+  ufw allow from $net to any port 443 proto tcp
+done
+ufw --force enable
+```
+
+On the MongoDB and daemon containers, allow 27017 and the RPC port only from the
+explorer container's private address. Neither should be reachable from anywhere else.
+
+### 14.8 Extra checks
+
+In addition to the checklist in [section 13](#13-verification-checklist):
+
+| Check | Expected |
+|---|---|
+| `curl -s https://<fqdn>/ \| grep -i 'rel="canonical"'` | an `https://` URL, not `http://` |
+| `curl -s -o /dev/null -w '%{http_code}' https://<fqdn>/includes/header.php` | `403`, confirming `AllowOverride All` |
+| `curl -s -o /dev/null -w '%{http_code}' https://<fqdn>/css/` | `403`, not a directory listing |
+| `tail -1 /var/log/apache2/<sym>-access.log` | a visitor address, not a Cloudflare one |
+| `/admin-console/` over HTTPS | login succeeds; the cookie is `Secure`, so plain HTTP never works |
+| Ads enabled, visited from outside the EU | no consent wall, confirming `CF-IPCountry` arrives |
