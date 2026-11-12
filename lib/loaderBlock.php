@@ -189,7 +189,14 @@ function ldr_missingVoutRepairTarget($vin_ids, $tip, $already_repaired){
 function ldr_coinbaseTag($hex, $max_len = 120){
     if (!is_string($hex) || $hex === '') { return null; }
     $raw = @hex2bin($hex);
-    if ($raw === false) { return null; }
+    if ($raw === false || $raw === '') { return null; }
+    // BIP34: the script opens with a push of the block height. Its low bytes change
+    // every block and are frequently printable, so on a short coinbase they run into
+    // the tag - height 5385719 is "f7 2d 52", which is why /avian-sv2/ arrived as
+    // "-R/avian-sv2/yyz/". The push opcode gives the length, so dropping it is exact
+    // rather than a guess, and anything that is not a plausible height push is left.
+    $n = ord($raw[0]);
+    if ($n >= 1 && $n <= 8 && strlen($raw) > $n) { $raw = substr($raw, 1 + $n); }
     if (!preg_match_all('/[\x20-\x7e]{3,}/', $raw, $m)) { return null; }
     $tag = trim(implode(' ', $m[0]));
     if ($tag === '') { return null; }
