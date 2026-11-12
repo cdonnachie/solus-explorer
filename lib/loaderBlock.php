@@ -170,6 +170,32 @@ function ldr_missingVoutRepairTarget($vin_ids, $tip, $already_repaired){
  * daemon and either rolls back and re-loads, or calls ldr_abortBlock() with
  * the original description and context.
  */
+/*
+ * The miner's tag from a coinbase script, or null.
+ *
+ * A coinbase script holds the BIP34 height, an extranonce, and whatever the miner
+ * chose to put there - which by convention identifies the pool: "/avian-sv2/",
+ * "F4pool", "pool.rplant.xyz", "/zpool.ca/". This is the only way to attribute
+ * blocks from a pool that pays out to a fresh address every block, because there is
+ * no stable address for an operator to label.
+ *
+ * Runs of three or more printable characters are kept and joined with a space. The
+ * height and extranonce bytes seldom form one, so what survives is the tag. The
+ * extracted text is stored rather than the raw script: it is what a lookup matches
+ * against, and it is roughly a tenth of the size over a multi-million-block chain.
+ * The cost of that choice is that recovering anything else from the script later
+ * would need a reindex.
+ */
+function ldr_coinbaseTag($hex, $max_len = 120){
+    if (!is_string($hex) || $hex === '') { return null; }
+    $raw = @hex2bin($hex);
+    if ($raw === false) { return null; }
+    if (!preg_match_all('/[\x20-\x7e]{3,}/', $raw, $m)) { return null; }
+    $tag = trim(implode(' ', $m[0]));
+    if ($tag === '') { return null; }
+    return substr($tag, 0, $max_len);
+}
+
 class LdrMissingVoutsException extends Exception {
     public $block_ix;
     public $block_hash;
@@ -220,6 +246,7 @@ class Block {
     public $dev_winner          = null;     // Dev fee wallet
 
     public $tx_count            = 0;        // total number of txs
+    public $coinbase_tag        = null;     // miner/pool tag from the coinbase script
     //public $creditPoolBalance   = null;
 
     public function __construct($block_ix, $empty = false) {
@@ -3786,7 +3813,14 @@ class Tx {
                 $vin = new Vin($this->_id, $n, $this->block_ix);
                 $vin->readVin($txvin);
                 
-                if($vin->type == "coinbase")        {$this->coinbase_vin = true;}
+                if($vin->type == "coinbase")        {
+                    $this->coinbase_vin = true;
+                    // Keep the miner's tag on the block: a pool that pays a fresh
+                    // address per block cannot be identified any other way.
+                    if ($block instanceof Block && isset($txvin->coinbase) && is_null($block->coinbase_tag)) {
+                        $block->coinbase_tag = ldr_coinbaseTag($txvin->coinbase);
+                    }
+                }
 
                 $this->vins[$vin->_id] = $vin;
             }
