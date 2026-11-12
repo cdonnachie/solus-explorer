@@ -38,7 +38,7 @@ timeouts, and the hashrate always comes from `getnetworkhashps`.
 |---|---|---|
 | `rpc_protocol`, `rpc_host`, `rpc_port` | `http`, `127.0.0.1`, **required** | Daemon RPC endpoint. |
 | `rpc_user`, `rpc_pass` | **required** | Must match `rpcuser`/`rpcpassword` of the daemon. |
-| `getinfo_method` | | `getinfo` (old daemons) or `getnetworkinfo` (Bitcoin Core 0.16+). Any other value leaves version, protocol and connection count as "unknown". |
+| `getinfo_method` | | `getinfo` (old daemons) or `getnetworkinfo` (Bitcoin Core 0.16+). Ravencoin-family daemons, Avian and Evrmore among them, **removed `getinfo`** and answer `-32601 Method not found`, so they need `getnetworkinfo`. Any other value leaves version, protocol and connection count as "unknown". |
 | `getchainsync_method` | | `getblockchaininfo` (synced when headers minus blocks is below `maturity`) or `mnsync` (Dash family). Other values mean "always synced". |
 | `gethashps_multiplier` | 1.0 | Multiplies the reported hashrate (for daemons that report in a different unit). |
 
@@ -320,7 +320,11 @@ updates it in place.
 ## Known quirks
 
 * `getinfo_method` must be `getinfo` or `getnetworkinfo`; any other value shows
-  version, protocol and connections as "unknown".
+  version, protocol and connections as "unknown". The same two fields read
+  "unknown" while everything else works when the method is set to one the daemon
+  does not implement: the RPC error is returned rather than thrown, so the daemon
+  still reports ONLINE and the connection count, which comes from a separate call,
+  is still correct. Ravencoin-family daemons need `getnetworkinfo`.
 * `burn_addresses` is read through a misspelled `isset` check, so burned coins are
   always computed from the `Fee Collector` pseudo-address.
 * Dropping a provider from the waterfall because its IDs are missing does not work;

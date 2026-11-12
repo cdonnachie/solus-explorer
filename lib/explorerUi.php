@@ -119,6 +119,34 @@ use WebSocket\Exception;
         }
         return $res;
     }
+    /*
+     * normalizeSiToScale() for a metric that may be absent.
+     *
+     * A missing reading used to be represented by the bare string "-.---", while a
+     * present one is an object. Callers then read ->value on both, which PHP 8 makes
+     * a warning on a string and - when assigning - a fatal Error that catch(Exception)
+     * does not catch. A host without swap therefore turned the admin dashboard
+     * endpoint into a 500. The placeholder keeps the shape of a real reading so
+     * ->value and ->dimension are always safe to touch.
+     */
+    function ui_siOrPlaceholder($bytes, string $scale = "G", int $dec_precision = 3) : stdClass {
+        if (is_null($bytes)) {
+            $res = new stdClass();
+            $res->origin = null;
+            $res->value = "-.---";
+            $res->dimension = "";
+            return $res;
+        }
+        return normalizeSiToScale($bytes, $scale, $dec_precision);
+    }
+
+    /* "1.503 GB" for a reading, "-.--- B" when the metric is absent. */
+    function ui_siText($o, int $dec_precision = 3) : string {
+        if (!is_object($o) || !isset($o->value)) { return "-.--- B"; }
+        $v = is_numeric($o->value) ? fpp($o->value, $dec_precision) : $o->value;
+        return $v . " " . ($o->dimension ?? "") . "B";
+    }
+
     function normalizeSiToScale($value, $scale, $dec_precision = 3){
         $res = new stdClass();
         try {

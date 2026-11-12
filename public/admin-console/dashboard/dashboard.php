@@ -212,18 +212,18 @@
     $dmn_percent_split = splitFloat( $resp_percent,1,1);
     $syn_percent_split = splitFloat( $sync_percent,16,1);
     $observation_period = is_null($summary->observation_period_seconds) ? "---" : round($summary->observation_period_seconds,0);
-    $mem_total  = is_null($summary->memory_total_bytes) ? "-.---" : normalizeSiToScale( $summary->memory_total_bytes,"G",3);
-    $mem_free   = is_null($summary->memory_total_bytes) ? "-.---" : normalizeSiToScale( $summary->memory_total_bytes-$summary->memory_used_bytes,"G",3);
-    $swp_total  = is_null($summary->swap_total_bytes) ? "-.---" : normalizeSiToScale( $summary->swap_total_bytes,"G",3);
-    $swp_free   = is_null($summary->swap_total_bytes) ? "-.---" : normalizeSiToScale( $summary->swap_total_bytes-$summary->swap_used_bytes,"G",3);
-    $hdd_total  = is_null($summary->disk_total_bytes) ? "-.---" : normalizeSiToScale( $summary->disk_total_bytes,"G",3);
-    $hdd_free   = is_null($summary->disk_free_bytes) ? "-.---" : normalizeSiToScale( $summary->disk_free_bytes,"G",3);
+    $mem_total  = ui_siOrPlaceholder($summary->memory_total_bytes);
+    $mem_free   = ui_siOrPlaceholder(is_null($summary->memory_total_bytes) ? null : $summary->memory_total_bytes-$summary->memory_used_bytes);
+    $swp_total  = ui_siOrPlaceholder($summary->swap_total_bytes);
+    $swp_free   = ui_siOrPlaceholder(is_null($summary->swap_total_bytes) ? null : $summary->swap_total_bytes-$summary->swap_used_bytes);
+    $hdd_total  = ui_siOrPlaceholder($summary->disk_total_bytes);
+    $hdd_free   = ui_siOrPlaceholder($summary->disk_free_bytes);
     $mem_free_percent_split = splitFloat(100 - $mem_percent_split->number,1,1);
     $swp_free_percent_split = splitFloat(100 - $swp_percent_split->number,1,1);
     $hdd_free_percent_split = splitFloat(100 - $hdd_percent_split->number,1,1);
-    $db_total   = is_null($summary->database_data_size_bytes) ? "-.---" : normalizeSiToScale( $summary->database_data_size_bytes,"G",3);
-    $db_disk    = is_null($summary->database_disk_size_bytes) ? "-.---" : normalizeSiToScale( $summary->database_disk_size_bytes,"G",3);
-    $db_comp_percent_split  = (isset($db_total->value) && $db_total->value!=0) ? splitFloat(100 - 100*($db_disk->value/$db_total->value),1,1) : splitFloat(null,1,1);
+    $db_total   = ui_siOrPlaceholder($summary->database_data_size_bytes);
+    $db_disk    = ui_siOrPlaceholder($summary->database_disk_size_bytes);
+    $db_comp_percent_split  = (isset($db_total->value) && is_numeric($db_total->value) && $db_total->value!=0) ? splitFloat(100 - 100*($db_disk->value/$db_total->value),1,1) : splitFloat(null,1,1);
   // DB COMPRESSION
     if (is_null($db_comp_percent_split->number) || is_nan($db_comp_percent_split->number)){
       $db_style = 'primary';
@@ -429,20 +429,20 @@
                 <tbody>
                   <tr class="">
                     <td class='text-left p-1'>Memory</td>
-                    <td class='text-right p-1'><span id="mem-total"><?php echo fpp($mem_total->value,3)." ".$mem_total->dimension."B"; ?></span></td>
-                    <td class='text-right p-1'><span id="mem-free"><?php echo fpp($mem_free->value,3)." ".$mem_free->dimension."B"; ?></span></td>
+                    <td class='text-right p-1'><span id="mem-total"><?php echo ui_siText($mem_total); ?></span></td>
+                    <td class='text-right p-1'><span id="mem-free"><?php echo ui_siText($mem_free); ?></span></td>
                     <td class='text-right p-1'><span id="mem-percent" class="badge badge-<?php echo $mem_style; ?>"><?php echo $mem_free_percent_split->whole; ?><small>.<?php echo $mem_free_percent_split->fraction; ?>%</small></span></td>
                   </tr>
                   <tr class="">
                     <td class='text-left p-1'>Swap</td>
-                    <td class='text-right p-1'><span id="swp-total"><?php echo fpp($swp_total->value,3)." ".$swp_total->dimension."B"; ?></span></td>
-                    <td class='text-right p-1'><span id="swp-free"><?php echo fpp($swp_free->value,3)." ".$swp_free->dimension."B"; ?></span></td>
+                    <td class='text-right p-1'><span id="swp-total"><?php echo ui_siText($swp_total); ?></span></td>
+                    <td class='text-right p-1'><span id="swp-free"><?php echo ui_siText($swp_free); ?></span></td>
                     <td class='text-right p-1'><span id="swp-percent" class="badge badge-<?php echo $swap_style; ?>"><?php echo $swp_free_percent_split->whole; ?><small>.<?php echo $swp_free_percent_split->fraction; ?>%</small></span></td>
                   </tr>
                   <tr class="">
                     <td class='text-left p-1'>Storage</td>
-                    <td class='text-right p-1'><span id="hdd-total"><?php echo fpp($hdd_total->value,3)." ".$hdd_total->dimension."B"; ?></span></td>
-                    <td class='text-right p-1'><span id="hdd-free"><?php echo fpp($hdd_free->value,3)." ".$hdd_free->dimension."B"; ?></span></td>
+                    <td class='text-right p-1'><span id="hdd-total"><?php echo ui_siText($hdd_total); ?></span></td>
+                    <td class='text-right p-1'><span id="hdd-free"><?php echo ui_siText($hdd_free); ?></span></td>
                     <td class='text-right p-1'><span id="hdd-percent" class="badge badge-<?php echo $disk_style; ?>"><?php echo $hdd_free_percent_split->whole; ?><small>.<?php echo $hdd_free_percent_split->fraction; ?>%</small></span></td>
                   </tr>
                   <tr class="">
@@ -453,8 +453,8 @@
                   </tr>
                   <tr class="">
                     <td class='text-left p-1'><?php echo $settings['db_name']; ?></td>
-                    <td class='text-right p-1'><span id="db-total"><?php echo fpp($db_total->value,3)." ".$db_total->dimension."B"; ?></span></td>
-                    <td class='text-right p-1'><span id="db-disk"><?php echo fpp($db_disk->value,3)." ".$db_disk->dimension."B"; ?></span></td>
+                    <td class='text-right p-1'><span id="db-total"><?php echo ui_siText($db_total); ?></span></td>
+                    <td class='text-right p-1'><span id="db-disk"><?php echo ui_siText($db_disk); ?></span></td>
                     <td class='text-right p-1'><span id="db-percent" class="badge badge-<?php echo $db_style; ?>"><?php echo $db_comp_percent_split->whole; ?><small>.<?php echo $db_comp_percent_split->fraction; ?>%</small></span></td>
                   </tr>
                   <tr class="">
