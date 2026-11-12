@@ -197,6 +197,11 @@ function ldr_coinbaseTag($hex, $max_len = 120){
     // rather than a guess, and anything that is not a plausible height push is left.
     $n = ord($raw[0]);
     if ($n >= 1 && $n <= 8 && strlen($raw) > $n) { $raw = substr($raw, 1 + $n); }
+    // Pool software conventionally follows the height with a four-byte timestamp
+    // push. Those bytes change every block and can all land in the printable range:
+    // block 1000's was 0x612f4851, which read as "QH/a". Drop that push when it is
+    // present. A tag never begins with 0x04, so this cannot eat one.
+    if (strlen($raw) > 5 && ord($raw[0]) === 4) { $raw = substr($raw, 5); }
     if (!preg_match_all('/[\x20-\x7e]{3,}/', $raw, $m)) { return null; }
     $tag = trim(implode(' ', $m[0]));
     if ($tag === '') { return null; }
