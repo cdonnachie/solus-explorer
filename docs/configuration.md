@@ -196,8 +196,13 @@ Skin colours live in `settings.php`, not in CSS. `public/css/style-n.css` paints
    ```
    Every token is optional and defaults to the shipped value, so set only what changes.
    The full list is `ui_getSkinTokenDefaults()` in `lib/explorerUi.php`.
-2. Put the logo and favicon in `public/img/` and set `logo_image` and `favicon_path`.
-   Optionally set `nav_image` to a side-menu background in the same folder.
+2. Put the logo and favicon in `public/img/local/` and set
+   `"logo_image" => "local/<file>"` and `"favicon_path" => "img/local/<file>"`.
+   Optionally set `"nav_image" => "img/local/<file>"` for a side-menu background.
+   Both `public/img/local/` and `public/css/local/` are git-ignored, so operator
+   artwork cannot be committed by accident (CONTRIBUTING rule 6) and a stale copy of
+   a shipped default cannot block a `git pull`. The paths are plain concatenations,
+   so a sub-folder needs no code change.
 3. Match `chart_colors` to the new palette so charts fit the skin. `chart_colors` is
    also published to CSS as `--chart-1` … `--chart-N`.
 
@@ -211,8 +216,10 @@ values in `style-n.css`; they are listed nowhere because each is used once. Chan
 in a copy of the stylesheet if you need to.
 
 To restyle beyond colours, copy the stylesheet
-(`cp public/css/style-n.css public/css/<sym>-style-n.css`), set
-`"theme_stylesheet" => "<sym>-style-n.css"` and keep `explorer_skin` at `solus-skin`.
+(`cp public/css/style-n.css public/css/local/<sym>-style-n.css`), set
+`"theme_stylesheet" => "local/<sym>-style-n.css"` and keep `explorer_skin` at
+`solus-skin`. Copy it rather than editing `style-n.css` in place: that file is a
+tracked default and still changes between releases.
 A copied stylesheet may also declare its own `:root` to override the tokens from
 `settings.php`, since it loads after them.
 

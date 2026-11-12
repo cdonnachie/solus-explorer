@@ -22,5 +22,11 @@
 # operator-supplied third-party tags (e.g. the CMP tag, see cmp_script)
 /public/js/local/
 
+# operator-supplied skin assets and coin artwork: logos, favicons, side-menu
+# backgrounds, copied stylesheets. Never commit these (CONTRIBUTING rule 6), and
+# keeping them out of the tracked defaults also stops a pull from conflicting.
+/public/img/local/
+/public/css/local/
+
 # loader output when cron redirects it (docs/installation.md section 11)
 /script/*.log
