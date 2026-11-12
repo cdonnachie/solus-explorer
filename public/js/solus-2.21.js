@@ -241,43 +241,6 @@ function updateOverview(host=''){
     });
 }
 
-function updateMining(host=''){
-    $.ajax({
-      url: host+'/_up/miningup.php',
-      success: function(data) {
-
-        $("#lmrText").html(data.lmr.text);
-        $("#amrText").html(data.amr.text);
-        $("#lbrText").html(data.lbr.text);
-        $("#abrText").html(data.abr.text);
-        $("#hrText").html(data.hr.text);
-        $('#hrDim').html(data.hr.dim);
-        $("#difText").html(data.dif.text);
-        $('#difDim').html(data.dif.dim);
-
-        myMrChart.data.datasets[0].data = data.mrc.pwb;
-        myMrChart.data.datasets[1].data = data.mrc.npwb;
-        myMrChart.update();
-
-        scTmConfig.data.labels = data.tmc.labels;
-        scTmConfig.data.datasets[0].data = data.tmc.data;
-        scTmConfig.data.datasets[0].backgroundColor = data.tmc.bgc;
-        scTmConfig.data.datasets[0].hoverBorderColor = data.tmc.hbc;
-        scTmConfig.update();
-
-        dataSet = data.tmt.data;
-        wTable.ajax.reload(null, false);
-
-        myLineChart.data.labels = data.hdc.labels;
-        myLineChart.data.datasets[0].data = data.hdc.hashrate;
-        myLineChart.data.datasets[1].data = data.hdc.difficulty;
-        myLineChart.update();
-
-        bTable.ajax.reload(null, false);
-      }
-    });
-}
-
 function getMetrics(h,d,r = null) {
   const payload = {
     rId: r,

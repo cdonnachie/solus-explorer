@@ -92,6 +92,21 @@
         "named_colors"      => ["danger" => "#d34f5c", "warning" => "#f5ca4a", "success" => "#42a759", "info" => "#79b8c2", "primary" => "#3d799c", "secondary" => "#6c757d", "light" => "#f8f9fa", "dark" => "#3c1c38"],
         "amcharts_license_key" => "",      // commercial amCharts 4 license key; empty keeps the free-license chart logo
 
+        // Skin colours. Optional: every token below defaults to the value the skin
+        // shipped with, so leaving this out renders exactly as before. Set only the
+        // tokens you want to change -- no CSS editing needed.
+        // Note there are two different "primary" colours: "primary" is the brand blue
+        // used by .primary-color and link hovers, while "btn-primary" is the pink
+        // action-button accent. Bootstrap's .btn-primary is re-skinned to the pink one.
+        // A custom "theme_stylesheet" can still override these by declaring its own :root.
+        // Full token list: lib/explorerUi.php -> ui_getSkinTokenDefaults()
+        // "skin_colors"       => [
+        //     "primary"     => "#3d799c",   // brand blue
+        //     "btn-primary" => "#ff4a67",   // pink action buttons
+        //     "navbar"      => "#3f5c80",
+        // ],
+
+
         // FontAwesome icons
         "op_return_symbol"      => "far fa-comment-dots",
         "dev_symbol"            => "fas fa-cog",

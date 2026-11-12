@@ -16,7 +16,6 @@ No Material Design for Bootstrap (MDB) code is included.
 | Chart.js | 2.9.4 | MIT | `public/js/Chart.min.js` | https://www.chartjs.org |
 | easy-pie-chart | 2.1.7 | MIT | `public/js/jquery.easypiechart.min.js` | https://github.com/rendro/easy-pie-chart |
 | download.js | 4.21 | MIT | `public/js/addons/download.min.js` | https://github.com/rndme/download |
-| clipboard.js | 2.0.11 | MIT | `public/js/clipboard.min.js` | https://clipboardjs.com |
 | qrcode-svg | 1.1.0 | MIT | `public/js/qrcode.min.js` | https://github.com/papnkukn/qrcode-svg |
 | toastr | 2.1.4 | MIT | `public/js/toastr.min.js`, `public/css/toastr.min.css` (loaded only while a subscription notice is shown) | https://github.com/CodeSeven/toastr |
 | Font Awesome Free | 5.15.4 | Icons CC BY 4.0, fonts SIL OFL 1.1, code MIT | `public/css/all.min.css`, `public/webfonts/fa-*` | https://fontawesome.com |
@@ -68,8 +67,8 @@ distributed with Solus Explorer.
   copyright holder: Bootstrap Authors and Twitter, Inc.; OpenJS Foundation and other
   contributors (jQuery); Federico Zivolo (Popper.js); SpryMedia Ltd (DataTables);
   Chart.js Contributors; Robert Fleischmann (easy-pie-chart); dandavis (download.js);
-  Zeno Rocha (clipboard.js); Papnkukn (qrcode-svg); John Papa, Hans Fjällemark and
-  Tim Ferrell (toastr); Fonticons, Inc. (Font Awesome code).
+  Papnkukn (qrcode-svg); John Papa, Hans Fjällemark and Tim Ferrell (toastr);
+  Fonticons, Inc. (Font Awesome code).
 - Apache-2.0: [LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt) (Roboto).
 - SIL OFL 1.1: [LICENSES/OFL-1.1.txt](LICENSES/OFL-1.1.txt) (Font Awesome fonts).
 - CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ (Font Awesome icons,

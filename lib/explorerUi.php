@@ -1266,6 +1266,125 @@ use WebSocket\Exception;
             return null;
         }
     }
+    /*
+     * Skin colour tokens.
+     *
+     * Single source of truth for the colours the skin stylesheet paints with.
+     * The defaults below are the exact values style-n.css used to hard-code, so a
+     * deployment that sets nothing renders identically.
+     *
+     * Operators override any subset with "skin_colors" in settings.php; a theme
+     * stylesheet may still win by declaring its own :root, because these tokens are
+     * emitted before the stylesheet links.
+     *
+     * Note the two different "primary" colours, which is a long-standing trap:
+     *   --primary      is the brand blue, used by .primary-color and link hovers
+     *   --btn-primary  is the pink action-button accent, NOT the brand colour
+     * Bootstrap's .btn-primary is re-skinned to the pink, so matching the brand blue
+     * on a button means .primary-color or --primary, not .btn-primary.
+     */
+    function ui_getSkinTokenDefaults() : array {
+        return [
+            // brand and semantic
+            "primary"             => "#3d799c",
+            "secondary"           => "#6c757d",
+            "success"             => "#42a759",
+            "info"                => "#79b8c2",
+            "info-hover"          => "#5fa0aa",
+            "warning"             => "#f5ca4a",
+            "danger"              => "#d34f5c",
+            "danger-deep"         => "#e30024",
+            "light"               => "#f8f9fa",
+            "muted"               => "#888",
+            "neutral"             => "#adb3b6",
+            // surfaces
+            "body-background"     => "#eee",
+            "footer-border"       => "#fff",   // used by _mix.css
+            "navbar"              => "#3f5c80",
+            "dark"                => "#3f5c80", // kept as an alias of navbar for forks/custom CSS
+            "dark-deep"           => "#0f1722",
+            "text-deep"           => "#304864",
+            "link"                => "#343a40",
+            // action buttons (the pink / blue / navy set)
+            "btn-primary"         => "#ff4a67",
+            "btn-primary-hover"   => "#ff647c",
+            "btn-secondary"       => "#64c3f0",
+            "btn-secondary-hover" => "#7bccf2",
+            "btn-default"         => "#2d486a",
+            "btn-default-hover"   => "#35547c",
+            // supporting
+            "input-border"        => "#b4c2c9",
+            "sidenav-accent"      => "#69adf4",
+            "accent-blue"         => "#159ad9",
+            "accent-blue-dark"    => "#14799e",
+        ];
+    }
+
+    /*
+     * Accept only values that cannot break out of a <style> block: hex, the
+     * rgb/rgba/hsl/hsla functional forms, and bare CSS colour keywords.
+     */
+    function ui_isCssColor($value) : bool {
+        if (!is_string($value)) { return false; }
+        $v = trim($value);
+        if ($v === "" || strlen($v) > 64) { return false; }
+        if (preg_match('/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/', $v)) { return true; }
+        if (preg_match('/^(?:rgb|rgba|hsl|hsla)\(\s*[0-9a-zA-Z.,%\/\s+-]{1,56}\)$/', $v)) { return true; }
+        if (preg_match('/^[a-zA-Z]{3,24}$/', $v)) { return true; }
+        return false;
+    }
+
+    function ui_getSkinTokens() : array {
+        global $settings;
+        $tokens = ui_getSkinTokenDefaults();
+        if (!isset($settings["skin_colors"]) || !is_array($settings["skin_colors"])) {
+            return $tokens;
+        }
+        foreach ($settings["skin_colors"] as $name => $value) {
+            // only override tokens the skin actually defines, and only with sane colours
+            if (array_key_exists($name, $tokens) && ui_isCssColor($value)) {
+                $tokens[$name] = trim($value);
+            }
+        }
+        return $tokens;
+    }
+
+    /*
+     * Emit the tokens as a nonced :root block. Must be rendered before the
+     * stylesheet links so a custom theme stylesheet can still override them.
+     */
+    function ui_renderSkinTokens() : string {
+        global $csp_nonce;
+        $decls = "";
+        foreach (ui_getSkinTokens() as $name => $value) {
+            $decls .= "--" . $name . ":" . $value . ";";
+        }
+        // chart palette, so charts and CSS can read one palette (see getChartColorArray)
+        $i = 1;
+        foreach (ui_getChartPalette() as $color) {
+            $decls .= "--chart-" . $i . ":" . $color . ";";
+            $i++;
+        }
+        $decls .= "--chart-count:" . ($i - 1) . ";";
+        return "<style nonce=\"" . htmlspecialchars((string)$csp_nonce, ENT_QUOTES) . "\">:root{" . $decls . "}</style>";
+    }
+
+    /*
+     * The operator chart palette, validated. Falls back to the shipped ramp.
+     */
+    function ui_getChartPalette() : array {
+        global $settings;
+        $fallback = ["#2f6c90","#3f799c","#4e86a8","#5c93b5","#6ba0c1","#79adce","#88bbda","#96c9e7","#a5d7f4"];
+        if (!isset($settings["chart_colors"]) || !is_array($settings["chart_colors"]) || count($settings["chart_colors"]) === 0) {
+            return $fallback;
+        }
+        $out = [];
+        foreach ($settings["chart_colors"] as $c) {
+            if (ui_isCssColor($c)) { $out[] = trim($c); }
+        }
+        return count($out) > 0 ? $out : $fallback;
+    }
+
     function getRandomColor(){
         global $settings;
         $rc = str_pad(dechex(random_int(10,245)),2,"0",STR_PAD_LEFT);
