@@ -401,8 +401,46 @@ The numeric cap ends each run after that many blocks, so the page caches are reb
 regularly during a long catch-up. A running loader is only replaced when its
 heartbeat in the pid file stops for longer than `loader_timeout_sec`, never because
 the run is long. Drop the cap once the explorer is at the tip, or leave it, it does
-no harm. Rotate `script/loader.log`
-with logrotate if you keep the redirection.
+no harm.
+
+If you keep the redirection, rotate the log. The loader prints one line per block, so
+a full catch-up writes roughly 75 bytes times the chain height -- a few hundred
+megabytes on a multi-million-block chain -- while at the tip it is a line or two a
+minute:
+
+```bash
+mkdir -p /var/log/solus-<sym>
+cat > /etc/logrotate.d/solus-<sym> <<'LR'
+/var/www/<sym>/script/loader.log {
+    rotate 7
+    size 100M
+    daily
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0640 root root
+    olddir /var/log/solus-<sym>
+}
+LR
+logrotate -d /etc/logrotate.d/solus-<sym>
+```
+
+`logrotate -d` is a dry run: it reports what it would do and changes nothing.
+
+No `postrotate` is needed, unlike MongoDB in section 3. Cron reopens the file with
+`>>` on every invocation, so a renamed log is replaced by the next run a minute later.
+A rotation during a run leaves that run writing into the rotated file, which costs a
+few lines and nothing else.
+
+`olddir` matters more than it looks. `.gitignore` covers `/script/*.log`, but
+`loader.log.1` does not match that pattern, so rotated files left beside it would show
+as untracked in the checkout indefinitely. Rotating them into `/var/log` keeps the
+working tree clean.
+
+The loader also records each run in the `LOADERLOG` collection, which is what
+`/admin-console/loaderlog/` reads, so redirecting the cron output to `/dev/null`
+instead loses the block-by-block trace but not the operational record.
 
 ## 12. Firewall
 
