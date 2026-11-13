@@ -20,7 +20,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta http-equiv="x-ua-compatible" content="ie=edge">
-  <meta name="robots" content="index, follow">
+  <?php /* Pages that resolved to nothing set $meta_robots before including the header,
+           so an unknown block, transaction or address is not offered for indexing.
+           Anything that does not set it keeps the previous behaviour. */ ?>
+  <meta name="robots" content="<?php echo (isset($meta_robots) && $meta_robots !== '') ? htmlspecialchars($meta_robots, ENT_QUOTES, 'UTF-8') : 'index, follow'; ?>">
   <?php if (isset($keywords) && !empty($keywords)) : ?>
   <meta data-hid="keywords" name="keywords" content="<?php echo $keywords; ?>" data-n-head="true">
   <?php else : ?>

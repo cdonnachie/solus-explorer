@@ -33,6 +33,29 @@
   global $title;
   $title = ui_getCoinName()." Address ".$address." | Balance & Transactions";
 
+  /*
+   * Resolve the address BEFORE the header: both the status line and the robots
+   * meta are emitted there, so the decision cannot be made further down.
+   *
+   * Three outcomes, and the middle one is why this is not simply a 404:
+   *   - has history         -> 200, indexable as before
+   *   - valid, no history   -> 200 and noindex. A real address nobody has paid
+   *                            yet is a legitimate page; wallets and coin sites
+   *                            link to these, so 404 would break those links.
+   *   - not a valid address -> 404 and noindex.
+   * Left at 200 "index, follow", the query-string URLs make the last case an
+   * unbounded space of indexable near-duplicates.
+   */
+  $tt->createTimer("db_getAddressData",1);
+  $ars = (!empty($address)) ? db_getAddressData($address) : array();
+  $tt->stopTimer("db_getAddressData");
+
+  if (empty($address)){
+      ui_markNotIndexable();            // bare /address/ is a search form
+  } else if (count($ars) == 0){
+      ui_markNotIndexable(ui_isWellFormedAddress($address) ? null : 404);
+  }
+
   $tt->createTimer("include_header",0);
   include_once __DIR__ . '/../includes/header.php';
   $tt->stopTimer("include_header");
@@ -49,9 +72,9 @@
   $notfound = false;
   if(!empty($address)){ 
     $noaddr = false; 
-    $tt->createTimer("db_getAddressData",1);
-    $ars=db_getAddressData($address); 
-    $tt->stopTimer("db_getAddressData");
+    // $ars was fetched above the header, so that the not-found decision could be
+    // made before any output. Querying again would double the cost of every
+    // address page view.
     //$ams = getAddressMovesData($address, 0); 
 
     if (count($ars)>0){

@@ -25,6 +25,10 @@
   $blockheight = sanitizeInput('blockheight','GET');
   $blockhash = sanitizeInput('blockhash','GET');
   // Heights are digits only; anything else is treated as not found.
+  // Keep the fact that something WAS asked for: once the height is blanked the
+  // page cannot otherwise tell "/block/" (a search form, fine to serve) from
+  // "/block/?blockheight=notanumber" (a bad request, which must answer 404).
+  $bad_request = ($blockheight !== '' && !ctype_digit((string)$blockheight));
   if ($blockheight !== '' && !ctype_digit((string)$blockheight)) { $blockheight = ''; }
   if (isset($_GET['mn'])){
     $mn = strtr(sanitizeInput('mn',"GET"),"_"," ");
@@ -122,6 +126,15 @@
     if ($blockheight-1 < 0) {$prev_vis = "btn-lst-disabled disabled";}
   }
 
+
+  // An unknown block is not content: answer 404 and keep it out of the index.
+  // The page URLs are query-string based, so leaving these at 200 "index, follow"
+  // offers crawlers an unbounded space of near-duplicate pages.
+  if ($notfound_visible || $bad_request){
+      ui_markNotIndexable(404);
+  } else if ($emptyrequest_visible){
+      ui_markNotIndexable();      // bare /block/ is a usable form, just not content
+  }
 
   include_once __DIR__ . '/../includes/header.php';
 ?>

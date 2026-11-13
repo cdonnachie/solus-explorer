@@ -215,6 +215,33 @@ and wallets:
 
 Hidden pages (`show_pages` false) open with `?mn=<magic_key>` appended.
 
+### Responses for objects that do not exist
+
+| Request | Status | `robots` |
+|---|---|---|
+| block, transaction or address that exists | 200 | `index, follow` |
+| **valid address with no history** | **200** | `noindex, follow` |
+| unknown block height or block hash | 404 | `noindex, follow` |
+| non-numeric block height | 404 | `noindex, follow` |
+| unknown transaction id | 404 | `noindex, follow` |
+| malformed address | 404 | `noindex, follow` |
+| `/block/` or `/address/` with no parameter | 200 | `noindex, follow` |
+
+A **valid address that has never received coins answers 200, not 404.** Wallets and
+coin websites link to an address before it has any history, and a 404 would break
+those links. It carries `noindex` because it has nothing to rank, not because it is
+an error. Integrations should treat 404 as "no such object" and 200 as a usable page,
+rather than inferring existence from the status code alone.
+
+An address counts as valid if it carries a correct base58check checksum, or decodes
+as bech32 against `segwit.bech32_prefix`. The base58check test deliberately ignores
+the version byte, so P2PKH and P2SH addresses both pass — `base58.nw_bytes` describes
+P2PKH only, and these chains issue P2SH addresses under a different version.
+
+Before this, every unknown object answered 200 with `index, follow` and a
+self-referencing canonical. Because the page URLs are query-string based, that
+offered crawlers an unbounded space of near-duplicate pages.
+
 Machine-readable outputs:
 
 * JSON API under `/api/`, see [api.md](api.md). Add the IP of the coin website to

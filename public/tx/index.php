@@ -58,7 +58,7 @@
         $notfound_visibility = "";
         $emptyrequest_visibility = "d-none";
         $tr = new stdClass();
-        http_response_code(404);
+        ui_markNotIndexable(404);   // unknown tx: not content, keep it unindexed
       }
     }
   } else { 
@@ -67,7 +67,7 @@
     $notfound_visibility = "d-none";
     $emptyrequest_visibility = "";
     $tr = new stdClass();
-    http_response_code(404);
+    ui_markNotIndexable(404);   // no txid supplied
   }
 
   // Synthetic shadow-ledger payouts hold no position in their anchor block's

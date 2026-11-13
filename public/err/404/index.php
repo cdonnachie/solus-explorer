@@ -7,6 +7,10 @@
 
   http_response_code(404);
   header("X-Robots-Tag: noindex, nofollow");
+  // The header already protects this page; without this the meta tag emitted by
+  // layout_head.php still said "index, follow", which simply contradicted it.
+  global $meta_robots;
+  $meta_robots = "noindex, nofollow";
   include_once __DIR__ . '/../../includes/header.php';
   
 ?>

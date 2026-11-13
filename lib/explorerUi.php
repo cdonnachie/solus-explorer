@@ -1311,6 +1311,93 @@ use WebSocket\Exception;
      * Bootstrap's .btn-primary is re-skinned to the pink, so matching the brand blue
      * on a button means .primary-color or --primary, not .btn-primary.
      */
+    /*
+     * Mark the current page as not offering anything worth indexing, optionally
+     * with an HTTP status. Must be called BEFORE the header is included, because
+     * both the status line and the robots meta are emitted there.
+     *
+     * Unknown blocks, transactions and addresses used to answer 200 with
+     * "index, follow" and a self-referencing canonical. Because the page URLs are
+     * query-string based and frozen, that is an unbounded space of distinct,
+     * near-duplicate, indexable pages.
+     */
+    function ui_markNotIndexable($status = null){
+        global $meta_robots;
+        $meta_robots = "noindex, follow";
+        if (!is_null($status) && !headers_sent()){
+            http_response_code((int)$status);
+        }
+    }
+
+    /*
+     * True when $addr is a syntactically valid address for this chain.
+     *
+     * Used to tell "no such address" from "a real address nobody has paid yet":
+     * the second is a legitimate page that wallets and coin sites link to, so it
+     * answers 200 and merely declines to be indexed, while the first answers 404.
+     *
+     * The base58check branch deliberately validates the CHECKSUM and length but
+     * not the version byte. settings["base58"]["nw_bytes"] describes P2PKH only,
+     * and these chains also issue P2SH addresses under a different version -- on
+     * Avian the dev-fund address rPC7kPCNPAVnUvQs4fWEvnFwJ4yfKvArXM is one. A
+     * version check would call those malformed and 404 a real address. A valid
+     * four-byte checksum is already a 1-in-2^32 filter, which is ample here.
+     */
+    function ui_isWellFormedAddress($addr){
+        global $settings;
+        if (!is_string($addr) || $addr === "" || strlen($addr) > 120) { return false; }
+
+        // bech32 / segwit, when the chain has it
+        if (!empty($settings["segwit"]["supported"]) && !empty($settings["segwit"]["bech32_prefix"])){
+            $hrp = $settings["segwit"]["bech32_prefix"];
+            if (stripos($addr, $hrp . "1") === 0){
+                try {
+                    if (function_exists("Bech32\\decodeSegwit")){
+                        \Bech32\decodeSegwit($hrp, strtolower($addr));
+                        return true;
+                    }
+                } catch (\Throwable $e) {
+                    return false;
+                }
+                return false;
+            }
+        }
+
+        $alphabet = isset($settings["base58"]["alphabet"])
+            ? $settings["base58"]["alphabet"]
+            : "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+        if (strlen($alphabet) !== 58) { return false; }
+
+        // base58 -> bytes, by repeated multiply-add. No bignum needed: every
+        // intermediate stays inside a PHP int.
+        $bytes = array(0);
+        $len = strlen($addr);
+        for ($i = 0; $i < $len; $i++){
+            $carry = strpos($alphabet, $addr[$i]);
+            if ($carry === false) { return false; }   // not an alphabet character
+            for ($j = 0; $j < count($bytes); $j++){
+                $carry += $bytes[$j] * 58;
+                $bytes[$j] = $carry & 0xff;
+                $carry >>= 8;
+            }
+            while ($carry > 0){
+                $bytes[] = $carry & 0xff;
+                $carry >>= 8;
+            }
+        }
+        // leading prefix characters are leading zero bytes
+        $zero = $alphabet[0];
+        for ($i = 0; $i < $len && $addr[$i] === $zero; $i++){ $bytes[] = 0; }
+
+        $raw = "";
+        for ($i = count($bytes) - 1; $i >= 0; $i--){ $raw .= chr($bytes[$i]); }
+        if (strlen($raw) !== 25) { return false; }    // version + 20 payload + 4 checksum
+
+        $payload  = substr($raw, 0, 21);
+        $checksum = substr($raw, 21, 4);
+        return hash_equals(substr(hash("sha256", hash("sha256", $payload, true), true), 0, 4), $checksum);
+    }
+
     function ui_getSkinTokenDefaults() : array {
         return [
             // brand and semantic
