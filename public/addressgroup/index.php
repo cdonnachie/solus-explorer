@@ -11,6 +11,10 @@
 
   $address = strtr(sanitizeInput('address','GET')," ","_");
   $groupid = strtr(sanitizeInput('groupid','GET')," ","_");
+  // A group id taken from the URL has to be verified; one derived from an address
+  // record below exists by construction, so remember which this is and spare the
+  // common case a second query.
+  $groupid_from_url = !empty($groupid);
 
   if (!empty($groupid)){ 
     $q = "groupid"; 
@@ -39,6 +43,17 @@
   $keywords = $settings["title"].", address group, ".$q_val.", balance, group members, addresses, csv export"; 
   global $title;
   $title = ui_getCoinName()." Address Group ".$q_val." | Balance & Members";
+
+  if ($q === ""){
+      ui_markNotIndexable();        // neither parameter: a form, not content
+  } else if ($q === "address"){
+      // An address that belongs to no group: either it does not exist, or it is
+      // a real address nobody has paid. Same rule as /address/ -- keep the valid
+      // one reachable for wallet links, decline to index it.
+      ui_markNotIndexable(ui_isWellFormedAddress($address) ? null : 404);
+  } else if ($groupid_from_url && count(db_getAddressGroupById($groupid)) == 0){
+      ui_markNotIndexable(404);     // no such group
+  }
 
   include_once __DIR__ . '/../includes/header.php';
 ?>

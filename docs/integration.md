@@ -225,13 +225,26 @@ Hidden pages (`show_pages` false) open with `?mn=<magic_key>` appended.
 | non-numeric block height | 404 | `noindex, follow` |
 | unknown transaction id | 404 | `noindex, follow` |
 | malformed address | 404 | `noindex, follow` |
-| `/block/` or `/address/` with no parameter | 200 | `noindex, follow` |
+| asset or address group that exists | 200 | `index, follow` |
+| unknown asset name or asset id | 404 | `noindex, follow` |
+| unknown address group id | 404 | `noindex, follow` |
+| `/block/`, `/address/`, `/asset/`, `/addressgroup/` with no parameter | 200 | `noindex, follow` |
+| `/block/raw/`, `/tx/raw/` with a 64-hex id | 200 | `noindex, follow` |
+| `/block/raw/`, `/tx/raw/` otherwise | 404 | `noindex, follow` |
 
 A **valid address that has never received coins answers 200, not 404.** Wallets and
 coin websites link to an address before it has any history, and a 404 would break
 those links. It carries `noindex` because it has nothing to rank, not because it is
 an error. Integrations should treat 404 as "no such object" and 200 as a usable page,
 rather than inferring existence from the status code alone.
+
+The raw views are **never** indexable, whether or not the object exists: the server
+sends only a loading shell and the JSON arrives client-side, so there is nothing for a
+crawler to read either way. They answer 404 when the identifier is not 64 hexadecimal
+characters, which is decided on syntax without a database lookup.
+
+`/addressgroup/?address=<addr>` follows the same rule as `/address/`: an address that
+belongs to no group answers 200 when it is well-formed and 404 when it is not.
 
 An address counts as valid if it carries a correct base58check checksum, or decodes
 as bech32 against `segwit.bech32_prefix`. The base58check test deliberately ignores

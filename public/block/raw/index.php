@@ -18,6 +18,21 @@
   global $title;
   $title = ui_getCoinName()." Raw block ".$block_hash." | Raw JSON";
 
+  /*
+   * A raw dump is never worth indexing: the server sends only a spinner and the
+   * JSON arrives client-side, so there is no content here for a crawler either
+   * way. Marking it unconditionally keeps the whole /block/raw/ space out of the
+   * index rather than just its unknown half, and costs no database query.
+   *
+   * A hash that is not 64 hex characters cannot name a block on this chain, so
+   * it is answered 404 on syntax alone -- again without a lookup.
+   */
+  if ($block_hash === '' || !ctype_xdigit($block_hash) || strlen($block_hash) !== 64){
+      ui_markNotIndexable(404);
+  } else {
+      ui_markNotIndexable();
+  }
+
   include_once __DIR__ . '/../../includes/header.php';
 ?>
   <!--Main layout-->

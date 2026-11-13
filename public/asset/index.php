@@ -11,6 +11,7 @@
 
   $name = "";
   $key = "";
+  $ast = array();   // set by whichever branch below runs; stays empty if neither does
   if (array_key_exists("name",$_GET)){
     $name = sanitizeInput('name',"GET");
     $ast = db_getAssetByName($name, true);
@@ -34,6 +35,14 @@
   $keywords = $settings["title"].", address, ".$name.", balance, transactions, statistics, charts, csv export"; 
   global $title;
   $title = ui_getCoinName()." Asset ".$name." | Balance, Holders & Transactions";
+
+  // The lookup above already ran, so no extra query is needed to tell an asset
+  // that exists from one that never did.
+  if (!array_key_exists("name",$_GET) && !array_key_exists("asset_id",$_GET)){
+      ui_markNotIndexable();        // bare /asset/ is a form, not content
+  } else if (count($ast) == 0){
+      ui_markNotIndexable(404);     // no such asset
+  }
 
   include_once __DIR__ . '/../includes/header.php';
 ?>

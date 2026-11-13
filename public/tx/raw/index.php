@@ -18,6 +18,17 @@
   global $title;
   $title = ui_getCoinName()." Raw TX ".$txid." | Raw JSON";
 
+  /*
+   * As with /block/raw/: the page is a spinner and the JSON is fetched
+   * client-side, so it is never indexable content. A txid that is not 64 hex
+   * characters is answered 404 on syntax alone, with no lookup.
+   */
+  if ($txid === '' || !ctype_xdigit($txid) || strlen($txid) !== 64){
+      ui_markNotIndexable(404);
+  } else {
+      ui_markNotIndexable();
+  }
+
   include_once __DIR__ . '/../../includes/header.php';
 ?>
   <!--Main layout-->
