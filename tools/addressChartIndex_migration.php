@@ -72,13 +72,60 @@
         return null;
     }
 
+    /* Finds the name of the index the winning plan chose.
+     *
+     * Skips rejectedPlans and allPlansExecution for the same reason
+     * explain_findStats() does not recurse: the plans the optimiser discarded
+     * name their own indexes, and while the superseded index still exists it is
+     * one of them. */
+    function explain_findIndexName($node){
+        if (is_object($node)) { $node = get_object_vars($node); }
+        if (!is_array($node)) { return null; }
+        if (isset($node["indexName"]) && is_string($node["indexName"])) {
+            return $node["indexName"];
+        }
+        foreach ($node as $k => $v){
+            if ($k === "rejectedPlans" || $k === "allPlansExecution") { continue; }
+            $hit = explain_findIndexName($v);
+            if (!is_null($hit)) { return $hit; }
+        }
+        return null;
+    }
+
+    /* A comparable signature for an index key, so this migration can recognise
+     * the index it wants by what it does rather than by what it is called.
+     *
+     * An operator who built it by hand will have chosen their own name, and
+     * MongoDB refuses createIndexes for a key that already exists under a
+     * different name -- so matching on the name alone would report the work as
+     * outstanding and then fail trying to repeat it. Directions are cast
+     * because the server may return them as int or double. */
+    function keySig($key){
+        if (is_object($key)) { $key = get_object_vars($key); }
+        if (!is_array($key)) { return ""; }
+        $parts = array();
+        foreach ($key as $f => $d){ $parts[] = $f . ":" . (int)$d; }
+        return implode(",", $parts);
+    }
+
+    /* name => ["json" => printable key, "sig" => comparable key] */
     function listIndexes($col){
         global $dbm, $settings;
         $res = $dbm->executeCommand($settings['db_name'],
             new MongoDB\Driver\Command(['listIndexes' => $col]))->toArray();
         $out = array();
-        foreach ($res as $i){ $out[$i->name] = json_encode($i->key); }
+        foreach ($res as $i){
+            $out[$i->name] = array("json" => json_encode($i->key), "sig" => keySig($i->key));
+        }
         return $out;
+    }
+
+    /* The name of the index holding this key, whatever it is called, or null. */
+    function indexNameForKey(array $indexes, $sig){
+        foreach ($indexes as $name => $meta){
+            if ($meta["sig"] === $sig) { return $name; }
+        }
+        return null;
     }
 
     /* Any address proves it: whether a plan is covered is a property of the
@@ -127,11 +174,7 @@
         $stats    = explain_findStats($r);
         $examined = is_null($stats) ? null : (int)$stats["totalDocsExamined"];
         $keys     = is_null($stats) ? null : (int)$stats["totalKeysExamined"];
-        $name = null;
-        $j = json_encode($r);
-        foreach ([$GLOBALS['NEW_NAME'], $GLOBALS['OLD_NAME']] as $n){
-            if (strpos($j, '"'.$n.'"') !== false) { $name = $n; break; }
-        }
+        $name     = explain_findIndexName($r);
         /* Covered means the answer came from index keys alone. Zero documents
            read with keys actually scanned is the whole test: no document reads
            is the property the chart needs, whatever the stages are called. */
@@ -144,16 +187,31 @@
     out(str_repeat("=", 54));
     out("  database   " . $settings['db_name']);
 
+    $NEW_SIG = keySig($NEW_KEY);
     $idx = listIndexes("ADDRESSMOVES");
+
+    /* Match the covering index by key, not by name: an operator may have built
+       it by hand and named it something else, and it is the key that does the
+       work. */
+    $new_actual = indexNameForKey($idx, $NEW_SIG);
+    $has_new    = !is_null($new_actual);
+    $has_old    = array_key_exists($OLD_NAME, $idx);
+
     out("");
     out("Indexes on ADDRESSMOVES:");
-    foreach ($idx as $n => $k){
-        $mark = ($n === $NEW_NAME) ? "  <- new" : (($n === $OLD_NAME) ? "  <- superseded" : "");
-        out("  " . str_pad($n, 40) . $k . $mark);
+    foreach ($idx as $n => $meta){
+        $mark = "";
+        if ($n === $new_actual) { $mark = "  <- covers the chart"; }
+        else if ($n === $OLD_NAME) { $mark = "  <- superseded"; }
+        out("  " . str_pad($n, 40) . $meta["json"] . $mark);
     }
-
-    $has_new = array_key_exists($NEW_NAME, $idx);
-    $has_old = array_key_exists($OLD_NAME, $idx);
+    if ($has_new && $new_actual !== $NEW_NAME){
+        out("");
+        out("Note: the covering index is present under the name " . $new_actual . ",");
+        out("      not " . $NEW_NAME . " as a fresh install creates it. The key is what");
+        out("      matters, so there is nothing to build -- the name differs only in");
+        out("      cosmetics. Renaming would mean a rebuild; not worth it.");
+    }
 
     $addr = sampleAddress();
     if (is_null($addr)){
@@ -191,7 +249,7 @@
     if ($do_create){
         out("");
         if ($has_new){
-            out("Index " . $NEW_NAME . " already exists -- skipping.");
+            out("The covering index already exists as " . $new_actual . " -- skipping.");
         } else {
             out("Building " . $NEW_NAME . " ... this reads the whole collection.");
             $cmd = new MongoDB\Driver\Command([
@@ -229,8 +287,9 @@
     if ($do_drop){
         out("");
         $idx = listIndexes("ADDRESSMOVES");
-        if (!array_key_exists($NEW_NAME, $idx)){
-            out("Refusing to drop " . $OLD_NAME . ": " . $NEW_NAME . " does not exist yet.");
+        if (is_null(indexNameForKey($idx, $NEW_SIG))){
+            out("Refusing to drop " . $OLD_NAME . ": no index carries the covering key");
+            out("  " . json_encode($NEW_KEY) . " yet. Run --create first.");
             exit(1);
         }
         if (!array_key_exists($OLD_NAME, $idx)){
@@ -257,8 +316,8 @@
 
     out("");
     out("Final indexes on ADDRESSMOVES:");
-    foreach (listIndexes("ADDRESSMOVES") as $n => $k){
-        out("  " . str_pad($n, 40) . $k);
+    foreach (listIndexes("ADDRESSMOVES") as $n => $meta){
+        out("  " . str_pad($n, 40) . $meta["json"]);
     }
     out("");
 ?>

@@ -254,8 +254,11 @@ rm script/tmp/stop.all
 
 The report prints the query plan before and after, and the line to check is
 `documents fetched`, which should go from roughly the address's movement count to **0**.
-`--drop-old` refuses unless the new index exists *and* the plan is confirmed covered, so
-it cannot leave the chart worse off than it started. Build it with the loaders paused:
+`--drop-old` refuses unless the covering index exists *and* the plan is confirmed
+covered, so it cannot leave the chart worse off than it started. The index is recognised
+by its key rather than its name, so a deployment where it was already built by hand
+under a different name is reported as needing nothing — MongoDB rejects a second index
+with the same key, so matching on the name would fail trying to repeat work already done. Build it with the loaders paused:
 `ADDRESSMOVES` is the largest collection in the database and the build competes with the
 loader for disk.
 
