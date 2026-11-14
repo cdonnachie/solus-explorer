@@ -5,6 +5,64 @@
  * sizing and the handful of utility classes the templates use.
  */
 
+/* --- Roboto ----------------------------------------------------------
+ * These came from mdb.css, which this file replaced. The font-family rule
+ * below was ported; these declarations were not, so nothing told the browser
+ * where Roboto lives and it fell back to the generic sans-serif -- which on
+ * Windows has no 300 weight, so body text rendered heavier than intended.
+ * layout_head.php has been preloading these same four files the whole time.
+ *
+ * Weights match mdb.css exactly, Thin at 200 included, so rules written
+ * against the old stack keep resolving to the same face. woff2 and woff only:
+ * eot and ttf were for browsers that cannot run this skin anyway, since it
+ * hard-depends on CSS custom properties.
+ */
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 200;
+  font-display: swap;
+  src: url("../font/roboto/Roboto-Thin.woff2") format("woff2"),
+       url("../font/roboto/Roboto-Thin.woff")  format("woff");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("../font/roboto/Roboto-Light.woff2") format("woff2"),
+       url("../font/roboto/Roboto-Light.woff")  format("woff");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../font/roboto/Roboto-Regular.woff2") format("woff2"),
+       url("../font/roboto/Roboto-Regular.woff")  format("woff");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../font/roboto/Roboto-Medium.woff2") format("woff2"),
+       url("../font/roboto/Roboto-Medium.woff")  format("woff");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../font/roboto/Roboto-Bold.woff2") format("woff2"),
+       url("../font/roboto/Roboto-Bold.woff")  format("woff");
+}
+
 /* --- base ------------------------------------------------------------ */
 body {
   font-family: "Roboto", sans-serif;
