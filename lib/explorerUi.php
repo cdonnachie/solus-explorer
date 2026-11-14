@@ -3084,6 +3084,37 @@ use WebSocket\Exception;
         }
         return $res;
     }
+    /* The balance the address held when a bounded chart window opens, or null if
+     * it cannot be established.
+     *
+     * The balance series is a running total. Starting it at zero is right only
+     * while the series covers the whole history, which it did until the chart
+     * began bounding its window: with a window it instead draws the *change*
+     * since the window opened, and an address that has sent more than it received
+     * inside the window draws a negative one, which the caller then clamps to a
+     * flat, confident, wrong zero.
+     *
+     * Derived by working backwards from the stored balance rather than by summing
+     * the movements before the window. Those are precisely the millions of
+     * movements the window exists to avoid reading, whereas the net change across
+     * the window is already in hand and the balance is one keyed lookup:
+     *
+     *     opening = balance_now - (net movement across the window)
+     *
+     * and since the window always ends at now, that is exact rather than an
+     * approximation. Returns null rather than zero when there is no address
+     * record, so the caller can omit the series instead of drawing a wrong one.
+     */
+    function ui_getChartOpeningBalance($address, $data){
+        $ar = db_getAddressData($address);
+        if (count($ar) == 0 || !isset($ar[0]->balance)) { return null; }
+        $net = @cdec(0);
+        foreach ($data as $d){
+            if (isset($d->movementsTotal)) { $net = $net + @cdec($d->movementsTotal); }
+        }
+        return @cdec($ar[0]->balance) - $net;
+    }
+
     function ui_getAddressMovesChartDataSip070($address, $from_time, $to_time, $granularity_sec, $time_multiplier = 1000, $time_limit_ms = 0){
         $res = array();
         /* The bucket arithmetic below takes a modulus by this and then steps a loop
@@ -3104,7 +3135,14 @@ use WebSocket\Exception;
                 $data_index[$d->_id] = $ix;
             }
 
+            /* A window that does not start at the beginning of the history has a
+               balance behind it, and the series has to open from there. */
             $bal = @cdec(0);
+            $show_bal = true;
+            if ($from_time > 0){
+                $opening = ui_getChartOpeningBalance($address, $data);
+                if (is_null($opening)) { $show_bal = false; } else { $bal = $opening; }
+            }
             // fill reference timestamps
             for ($ts = $min_timestamp; $ts <= $max_timestamp; $ts += $granularity_sec){
                 $ts_ms = $ts*$time_multiplier;
@@ -3115,7 +3153,7 @@ use WebSocket\Exception;
                         $mov = @cdec($d->movementsTotal);
                         $res[$ts]["mov"] = $mov->toString();
                         $bal += $mov;
-                        $res[$ts]["bal"] = ($bal > 0) ? $bal->toString() : 0;
+                        if ($show_bal) { $res[$ts]["bal"] = ($bal > 0) ? $bal->toString() : 0; }
                     }
                     if (isset($d->receivedTotal)) {
                         $recv = @cdec($d->receivedTotal);
@@ -3130,7 +3168,7 @@ use WebSocket\Exception;
                         }
                     }
                 } else {
-                    $res[$ts]["bal"] = ($bal > 0) ? $bal->toString() : 0;
+                    if ($show_bal) { $res[$ts]["bal"] = ($bal > 0) ? $bal->toString() : 0; }
                 }
                 //$ref_timestamps[$ts_ms] = ["date" => date('Y-m-d', $ts)];
             }
