@@ -543,8 +543,22 @@ use Decimal\Decimal;
                     "unique" => false,
                     "ns" => $db_name . "." . $col,
                 ], [
-                    "name" => "address_asc_time_desc_amount_asc",
-                    "key" => ["address" => 1, "move_time_sec" => -1,"amount"=>1],
+                    /* Carries all four fields the address movement chart reads, so its
+                       aggregation is answered from the index alone. Without the two
+                       *_amount keys the $match was indexed but receivedTotal and
+                       sentTotal still forced one document fetch per movement -- 0.25 ms
+                       each once cached, which is 11 s on a 45,000-movement address and
+                       no answer at all when those fetches come from disk.
+
+                       This replaces the former address_asc_time_desc_amount_asc. Its
+                       prefixes are {address}, {address, move_time_sec} and
+                       {address, move_time_sec, amount}, so every query that index
+                       served is still served, and no hint referenced it by name.
+                       An upgraded deployment must add this one and drop the old by
+                       hand -- see docs/operations.md. */
+                    "name" => "address_asc_time_desc_amounts",
+                    "key" => ["address" => 1, "move_time_sec" => -1, "amount" => 1,
+                              "vouts_amount" => 1, "vins_amount" => 1],
                     "unique" => false,
                     "ns" => $db_name . "." . $col,
                 ]

@@ -222,12 +222,48 @@ turn it off afterwards.
 4. Indexes are only created together with their collection. When a release adds
    an index to an existing collection it ships a script in `tools/` (for example
    `tools/sip041-sip061_migration.php`); run it once from the repository root.
+   **2.0.287 adds one to `ADDRESSMOVES`** — see below.
 5. Run `php loaderMongo-blocks.php 10` by hand and check the output, then remove the
    stop file.
 6. Reload Apache only if PHP packages changed; PHP files are picked up immediately.
 
 Patch PHP with versioned packages only (`php8.4-*`) so the host does not drift to a
 newer major version.
+
+### 2.0.287 — the address chart index
+
+The address movement chart sums `amount`, `vouts_amount` and `vins_amount` per time
+bucket. The old `address_asc_time_desc_amount_asc` index answered the match but carried
+only `amount`, so the server read one document per movement to add the other two up —
+about 0.25 ms each when those documents are cached, and far more when they are not. On
+an address with 45,000 movements that is over ten seconds, so the chart gave up and
+reported itself unavailable.
+
+`address_asc_time_desc_amounts` carries all four fields, so the aggregation is answered
+from index keys alone with no document reads. The new key is a superset of the old one
+and the old one's key is a prefix of it, so everything that index served is still
+served; it can be dropped afterwards.
+
+```bash
+touch script/tmp/stop.all          # pause the loaders, wait for the pid files to go
+php tools/addressChartIndex_migration.php              # report only, changes nothing
+php tools/addressChartIndex_migration.php --create     # build it
+php tools/addressChartIndex_migration.php --drop-old   # remove the superseded index
+rm script/tmp/stop.all
+```
+
+The report prints the query plan before and after, and the line to check is
+`documents fetched`, which should go from roughly the address's movement count to **0**.
+`--drop-old` refuses unless the new index exists *and* the plan is confirmed covered, so
+it cannot leave the chart worse off than it started. Build it with the loaders paused:
+`ADDRESSMOVES` is the largest collection in the database and the build competes with the
+loader for disk.
+
+Related, and worth checking at the same time if the explorer's MongoDB is on ZFS: a
+dataset with `primarycache=metadata` caches no data blocks at all, so every read that
+misses the WiredTiger cache goes to the physical disk. Setting `primarycache=all` on it
+measured 15x on this query and 7x on block loader throughput. Cap `zfs_arc_max` first if
+the host runs other guests.
 
 ## 5. Backup and restore
 
