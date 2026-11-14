@@ -158,6 +158,7 @@ Example for a PIVX-like chain:
 | `stop_on_missing_vins` | false | Abort the loader on an unresolved input instead of logging it. Debug aid. |
 | `debug_enabled` | false | Verbose per-tx output in the loader and ad-slot logging in the browser console. |
 | `calculate_chain_stats` | true | Build daily `CHAINSTATS` buckets (stats page). |
+| `count_cache_ttl_sec` | `600` | How long a row count for a paged list is reused, in seconds. An address with millions of movements costs seconds to count and the figure only fills in a "of N entries" label, so it is memoised in `CACHE`. Only counts that were slow or large are stored, so a crawler asking after unknown addresses cannot grow it. `0` counts on every request. |
 | `genesis_airdrop_enabled` | false | Track genesis airdrop claims (Evrmore). Creates `AIRDROPS`. |
 | `shadow_accounting`, `shadow_config` | false | Blackcoin "Gold Rush" shadow ledger. `shadow_config` keys read: `start_height`, `end_height`, `page_size`, `include_in_supply`. Enable before the initial sync, or use `script/shadowBackfill.php`. |
 

@@ -103,6 +103,56 @@ use Decimal\Decimal;
         global $settings;
         return mongo_getLastBlocks($limit, $skip, $filter);
     }
+    /* Movement counts for the paged lists, with the two failure modes handled in one
+       place: a count large enough to blow the time budget must not take the endpoint
+       down (mongo_countDbCollectionQuerySafe), and it must not be paid again on every
+       page click (the CACHE memo). Returns {n, exact} and, on a hit, ->cached. */
+    function db_getCountCacheTtlMs(){
+        global $settings;
+        $sec = (isset($settings["count_cache_ttl_sec"]) && is_numeric($settings["count_cache_ttl_sec"]))
+             ? (int)$settings["count_cache_ttl_sec"] : 600;
+        return max(0, $sec) * 1000;
+    }
+
+    /* Cache only what was expensive to get.
+       A count that returns in milliseconds gains nothing from a round trip to CACHE,
+       and memoising every address a crawler asks after would grow the collection
+       without bound -- these endpoints take an arbitrary address and most of them have
+       no movements at all. An inexact count is always cached: it is inexact precisely
+       because it was too slow to get, so it is the one most worth not repeating. */
+    function db_maybeCacheCount($key, $res, $ttl_ms){
+        if ($ttl_ms <= 0 || is_null($res)) { return; }
+        if (!$res->exact || $res->n >= 25000) {
+            mongo_recordCountCache($key, $res->n, $res->exact);
+        }
+    }
+
+    function db_getAddressMovesCountByAddressFast($address, $cap = 0)
+    {
+        $ttl = db_getCountCacheTtlMs();
+        $key = "AMOVES:".$address;
+        if ($ttl > 0) {
+            $hit = mongo_getCountCache($key, $ttl);
+            if (!is_null($hit)) { return $hit; }
+        }
+        $res = mongo_getAddressMovesCountByAddressSafe($address, $cap);
+        db_maybeCacheCount($key, $res, $ttl);
+        return $res;
+    }
+
+    function db_getAddressMovesCountWithFilterFast($filter = array(), $cap = 0)
+    {
+        $ttl = db_getCountCacheTtlMs();
+        $key = "AMOVESF:".md5(json_encode($filter));
+        if ($ttl > 0) {
+            $hit = mongo_getCountCache($key, $ttl);
+            if (!is_null($hit)) { return $hit; }
+        }
+        $res = mongo_getAddressMovesCountWithFilterSafe($filter, $cap);
+        db_maybeCacheCount($key, $res, $ttl);
+        return $res;
+    }
+
     function db_getFirstBlocks($limit = 100, $skip = 0, $filter = null)
     {
         return mongo_getFirstBlocks($limit, $skip, $filter);

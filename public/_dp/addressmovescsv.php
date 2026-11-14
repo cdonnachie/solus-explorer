@@ -20,7 +20,10 @@
   //$addr= strtr($_GET['addr'],"_"," ");
   $addr =  strtr(sanitizeInput("addr","GET"),"_"," ");
 
-  $rec = db_getAddressMovesCountByAddress($addr);
+  /* The count that used to sit here was never read. It ran before a single byte of
+     CSV was written, so on a large address it spent seconds, and on a very large one
+     it blew the Mongo time budget and turned the download into an uncaught exception
+     -- a 500 for a result nothing consumed. Removed rather than made safe. */
   //$skip = (int)$_POST["start"];
   //$limit = (int)$_POST["length"];
   

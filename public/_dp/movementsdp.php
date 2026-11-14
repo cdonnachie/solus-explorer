@@ -74,7 +74,12 @@
         }
       }
     
-      $rec = db_getAddressMovesCountWithFilter($filter);
+      /* Bounded by what paging can reach: skip is capped above, so counting past
+         that is work with no reader, and on an unfiltered view this collection is
+         large enough for an exact count to blow the time budget and take the
+         endpoint down. See mongo_countDbCollectionQuerySafe(). */
+      $cnt = db_getAddressMovesCountWithFilterFast($filter, 100000 + $limit);
+      $rec = $cnt->n;
       $ams = db_getAddressMovesDataWithFilter($filter, $limit, $skip); 
       foreach($ams as $am) {
         $m = array();
@@ -159,8 +164,8 @@
   echo json_encode([
     "draw"=> $draw,
     "processingtime_ms"=>$ptime,
-    "recordsTotal"=>$rec,
-    "recordsFiltered"=>$rec,
+    "recordsTotal"=>max($rec, $skip + count($result)),
+    "recordsFiltered"=>max($rec, $skip + count($result)),
     "data"=>$result
     ]);
   ?>

@@ -1723,6 +1723,59 @@ use Decimal\Decimal;
         }
         return $n;
     }
+    /* A count that cannot take the page down with it.
+     *
+     * mongo_countDbCollectionQuery() wraps every count in maxTimeMS, and a breach
+     * throws. Nothing caught that, so on a collection slice large enough to blow the
+     * budget -- an address with millions of movements, read cold -- the provider died
+     * with an uncaught exception and the browser got HTTP 500 with an empty body,
+     * which DataTables reports as "Ajax error".
+     *
+     * An exact count of several million index entries is inherently slow; it is not a
+     * missing index. So: try exact, and if that cannot be had in the budget, fall back
+     * to a count bounded by $cap, which stops scanning there and is cheap. The caller
+     * learns which it got through ->exact and can say so rather than quietly print a
+     * wrong total.
+     *
+     * $cap of 0 means no fallback count, only the exact attempt.
+     */
+    function mongo_countDbCollectionQuerySafe($collection, $query, $cap = 0){
+        global $dbm;
+        global $settings;
+        $res = new stdClass();
+        $res->n = 0;
+        $res->exact = true;
+
+        try {
+            $dbc = new MongoDB\Driver\Command(
+                mongo_webTimeLimit(['count' => $collection, "query" => (object)$query])
+            );
+            $r = $dbm->executeCommand($settings['db_name'], $dbc);
+            $res->n = (int)$r->toArray()[0]->n;
+            return $res;
+        } catch (Exception $e) {
+            // Budget blown, or the server went away mid-count. Either way, degrade.
+        }
+
+        $res->exact = false;
+        if ($cap <= 0) { return $res; }
+
+        try {
+            /* Deliberately a shorter budget than the exact attempt: this one is meant
+               to be fast, and if it is not, waiting another 20 s to tell the reader a
+               number helps nobody. */
+            $dbc = new MongoDB\Driver\Command(
+                ['count' => $collection, "query" => (object)$query,
+                 "limit" => (int)$cap, "maxTimeMS" => 5000]
+            );
+            $r = $dbm->executeCommand($settings['db_name'], $dbc);
+            $res->n = (int)$r->toArray()[0]->n;
+        } catch (Exception $e) {
+            $res->n = 0;   // the caller floors this against the rows it actually has
+        }
+        return $res;
+    }
+
     function mongo_GetDbCollectionStats($collection){
         return mongo_sizeDbCollection($collection);
     }
@@ -2752,6 +2805,46 @@ use Decimal\Decimal;
         $query = ['address' => $address];
         return mongo_countDbCollectionQuery("ADDRESSMOVES", $query);
     }
+    function mongo_getAddressMovesCountByAddressSafe($address, $cap = 0){
+        return mongo_countDbCollectionQuerySafe("ADDRESSMOVES", ['address' => $address], $cap);
+    }
+    function mongo_getAddressMovesCountWithFilterSafe($filter = array(), $cap = 0){
+        return mongo_countDbCollectionQuerySafe("ADDRESSMOVES", $filter, $cap);
+    }
+
+    /* Counts memoised in the existing CACHE collection, keyed by a caller-supplied
+       string. CACHE is already a cache -- rebuilt constantly, never a source of truth
+       -- so nothing here is an indexed document shape and no reindex is implied.
+       Returns null when there is no entry or it has aged out. */
+    function mongo_getCountCache($key, $ttl_ms){
+        $query = new MongoDB\Driver\Query(['_id' => "COUNT:".$key], []);
+        $rows = mongo_execDbQuery($query, "CACHE")->toArray();
+        if (count($rows) == 0) { return null; }
+        $row = $rows[0];
+        if (!isset($row->n) || !isset($row->t)) { return null; }
+        if ((milliseconds() - (float)$row->t) >= $ttl_ms) { return null; }
+        $res = new stdClass();
+        $res->n      = (int)$row->n;
+        $res->exact  = isset($row->exact) ? (bool)$row->exact : true;
+        $res->cached = true;
+        return $res;
+    }
+    function mongo_recordCountCache($key, $n, $exact){
+        global $dbm;
+        global $settings;
+        $bulk = new MongoDB\Driver\BulkWrite(['ordered' => false]);
+        $bulk->update(
+            ["_id" => "COUNT:".$key],
+            ['$set' => ["n" => (int)$n, "exact" => (bool)$exact, "t" => milliseconds()]],
+            ["upsert" => true]
+        );
+        try {
+            $dbm->executeBulkWrite($settings["db_name"] . ".CACHE", $bulk);
+        } catch (Exception $e) {
+            // A cache that cannot be written is still a working page. Say nothing.
+        }
+    }
+
     function mongo_getAddressMovesCountWithFilter($filter = array()){
         $query = $filter;
         return mongo_countDbCollectionQuery("ADDRESSMOVES", $query);

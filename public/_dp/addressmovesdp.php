@@ -23,14 +23,22 @@
   //$draw=(int)$_POST["draw"];
   $draw = (int)sanitizeInput("draw","POST");
 
-  $rec = db_getAddressMovesCountByAddress($addr);
+  $SKIP_CAP = 100000;
   //$skip = (int)$_POST["start"];
   $skip = (int)sanitizeInput("start","POST");
-  $skip = max(0, min($skip, 100000));
+  $skip = max(0, min($skip, $SKIP_CAP));
   //$limit = (int)$_POST["length"];
   $limit = (int)sanitizeInput("length","POST");
 
   if($limit>500 || $limit <= 0){ $limit = 500;}
+
+  /* Counted after the paging parameters because the fallback is bounded by what
+     paging can actually reach: skip is capped, so no row past $SKIP_CAP + $limit is
+     reachable, and counting further than that to fill in a label is work with no
+     reader. An address with millions of movements used to take this endpoint down
+     with an uncaught timeout -- see mongo_countDbCollectionQuerySafe(). */
+  $cnt = db_getAddressMovesCountByAddressFast($addr, $SKIP_CAP + $limit);
+  $rec = $cnt->n;
 
   $result = array();
   if(!empty($addr)) {
@@ -124,8 +132,11 @@
     "draw"=> $draw,
     "processingtime_ms"=>$ptime,
     "addr" => $addr,
-    "recordsTotal"=>$rec,
-    "recordsFiltered"=>$rec,
+    /* Never claim fewer rows than were just handed over: if the count degraded, the
+       page itself is still evidence of a floor. */
+    "recordsTotal"=>max($rec, $skip + count($result)),
+    "recordsFiltered"=>max($rec, $skip + count($result)),
+    "countExact"=>$cnt->exact,
     "data"=>$result
     ]);
   ?>
