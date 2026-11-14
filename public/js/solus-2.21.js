@@ -163,9 +163,55 @@ function doSearch(rootLink, q){
 
 // Export datatable to CSV
 function exportToCsv(url, filename, btn){
+    /* This had no error handler at all. A failed or timed-out export did
+       nothing whatever: no file, no message, a button that had apparently
+       ignored the click. It also gave no sign of working, and an export of a
+       hundred thousand movements takes seconds -- long enough to be pressed
+       again, starting a second one. Both are answered on the control that was
+       pressed, which is where someone is already looking.
+
+       btn is the triggering element. It was always in this signature and never
+       passed; the call sites now hand over `this`. Without it the export still
+       works, just silently as before. */
+    var $b = btn ? $(btn) : $();
+    var label = $b.length ? $b.html() : null;
+
+    function finish(message){
+        if (!$b.length) { return; }
+        if (!message) { $b.html(label).prop('disabled', false); return; }
+        $b.html(message);
+        setTimeout(function(){ $b.html(label).prop('disabled', false); }, 5000);
+    }
+    function failed(reason){
+        finish('Export failed');
+        /* toastr is only loaded when a subscription notice needs it, so it is
+           not here to be relied on -- say more when it is, and settle for the
+           button when it is not. */
+        if (typeof toastr !== 'undefined' && toastr && toastr.error) {
+            toastr.error(reason, 'Export failed');
+        }
+    }
+
+    if ($b.length) { $b.prop('disabled', true).html('Preparing&hellip;'); }
+
     $.ajax({
-        url: url, 
-        success: download.bind(true, "text/plain", filename)
+        url: url,
+        success: function(data){
+            if (typeof data !== 'string' || data.length === 0) {
+                failed('The server returned an empty file.');
+                return;
+            }
+            finish();
+            /* download.js's documented ajax idiom: called with this === true it
+               swaps its first and third arguments, so the order here is
+               (mimeType, filename, payload). Keep it. */
+            download.call(true, "text/plain", filename, data);
+        },
+        error: function(xhr){
+            failed(xhr && xhr.status
+                ? 'The server answered ' + xhr.status + '.'
+                : 'The request did not complete.');
+        }
     });
 }
 

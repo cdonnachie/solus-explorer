@@ -194,6 +194,7 @@ movements, addresses) are always on. A hidden page can still be opened with
 | `show_zerocoin` | false | Zerocoin columns. |
 | `show_shield`, `show_burned`, `show_illegal_supply` | false, true, true | Overview cards. |
 | `export_csv_enabled` | true | CSV download buttons on address, group and asset pages. |
+| `export_csv_max_rows` | `100000` | Most rows one CSV export will write for a single address. The export streams from the database cursor, so this is not a memory limit — it bounds how long the reader waits and how long a cursor stays open. When an export stops at this number it says so in a final row, rather than handing over a short file that looks complete. `0` removes the cap, which on an address with millions of movements means a download nobody waits for. |
 | `movements_overview_days` | 7 | Days of movements shown on the overview. |
 | `special_features` | none | Coin-specific hooks (`MDAO_API`, `MDAO_balance`). |
 

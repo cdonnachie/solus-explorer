@@ -444,7 +444,7 @@
               <span class="float-right pb-2"><button class="btn btn-sm btn-info " id="exportToCsv">Export to CSV</button></span>
               <script type='text/javascript'>
                 $('#exportToCsv').click( function(){
-                  exportToCsv('<?php echo $settings["explorer_address"]; ?>/_dp/addressgroupcsv.php?groupid=<?php echo $groupid; ?>','<?php echo $groupid; ?>_addresses_<?php echo date("Y-m-d_H-i-s"); ?>.csv');
+                  exportToCsv('<?php echo $settings["explorer_address"]; ?>/_dp/addressgroupcsv.php?groupid=<?php echo $groupid; ?>','<?php echo $groupid; ?>_addresses_<?php echo date("Y-m-d_H-i-s"); ?>.csv',this);
                 });
               </script>
             </div>

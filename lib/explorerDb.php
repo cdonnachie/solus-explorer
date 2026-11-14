@@ -412,6 +412,21 @@ use Decimal\Decimal;
     {
         return mongo_getAddressMovesDataByAddress($address, $limit, $skip);
     }
+    function db_getAddressMovesCursorByAddress($address, $limit = 100, $skip = 0)
+    {
+        return mongo_getAddressMovesCursorByAddress($address, $limit, $skip) ;
+    }
+    /* Most rows the CSV export will write for one address. The export streams, so
+       this is not a memory limit -- it bounds how long the reader waits and how
+       long a database cursor is held open. 0 means no cap, which on an address
+       with millions of movements means a download nobody receives. */
+    function db_getCsvExportMaxRows()
+    {
+        global $settings;
+        $n = (isset($settings["export_csv_max_rows"]) && is_numeric($settings["export_csv_max_rows"]))
+            ? (int)$settings["export_csv_max_rows"] : 100000;
+        return max(0, $n);
+    }
     function db_getAddressMovesDataWithFilter($filter = array(), $limit = 100, $skip = 0, $sort = array())
     {
         global $settings;

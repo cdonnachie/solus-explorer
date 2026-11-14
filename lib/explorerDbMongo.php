@@ -2823,6 +2823,26 @@ use Decimal\Decimal;
         $cursor = mongo_execDbQuery($query, "ADDRESSMOVES");
         return $cursor->toArray();
     }
+    /* The same query as mongo_getAddressMovesDataByAddress, handed back as the
+     * cursor rather than an array.
+     *
+     * For the CSV export, which writes a row and forgets it: toArray() holds
+     * every matching document in PHP memory at once, which is why that endpoint
+     * had to raise memory_limit to 512M before it could run. Iterating the
+     * cursor fetches in batches instead, so memory stays flat however many rows
+     * are exported and the first bytes reach the client without waiting for the
+     * last document.
+     *
+     * $limit of 0 means no limit, so callers must impose their own.
+     */
+    function mongo_getAddressMovesCursorByAddress($address, $limit = 100, $skip = 0){
+        $query = new MongoDB\Driver\Query(
+            ['address' => $address],
+            mongo_webTimeLimit(['sort' => ['block_ix' => -1], 'skip' => (int)$skip,
+                                'limit' => (int)$limit, 'hint' => 'address_block_nu'])
+        );
+        return mongo_execDbQuery($query, "ADDRESSMOVES");
+    }
     function mongo_getAddressMovesDataWithFilter($filter = array(), $limit = 100, $skip = 0, $sort = array()){
         if (count($sort) == 0) {$sort = ['block_ix' => -1];}
         $query = new MongoDB\Driver\Query(

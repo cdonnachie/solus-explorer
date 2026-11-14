@@ -182,6 +182,7 @@
         "show_burned"           => true,    // overview card
         "show_illegal_supply"   => true,    // overview card
         "export_csv_enabled"    => true,    // CSV buttons on address, group and asset pages
+        "export_csv_max_rows"  => 100000, // most rows one CSV export will write; it streams, so this bounds the wait, not memory.
         "rvn_assets"            => false,
 
     // Markets
