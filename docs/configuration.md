@@ -41,6 +41,7 @@ timeouts, and the hashrate always comes from `getnetworkhashps`.
 | `getinfo_method` | | `getinfo` (old daemons) or `getnetworkinfo` (Bitcoin Core 0.16+). Ravencoin-family daemons, Avian and Evrmore among them, **removed `getinfo`** and answer `-32601 Method not found`, so they need `getnetworkinfo`. Any other value leaves version, protocol and connection count as "unknown". |
 | `getchainsync_method` | | `getblockchaininfo` (synced when headers minus blocks is below `maturity`) or `mnsync` (Dash family). Other values mean "always synced". |
 | `gethashps_multiplier` | 1.0 | Multiplies the reported hashrate (for daemons that report in a different unit). |
+| `show_private_peers` | false | Whether peers on private address ranges appear on `/network/`. Left false, a peer on 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16, 100.64/10 (carrier NAT and Tailscale), `fc00::/7`, `fe80::/10` or `::1` is dropped from the peer tables, the client and protocol charts, the connection counts and the addnode list, including `/api/getconnectioncount/` and `/api/getaddnodelist/`. Those peers are the operator's own machines, and `/network/` is public. `.onion`, `.i2p` and `.cjdns` peers are not IP literals and are always shown. Set it true only where the whole network is private, such as a regtest or lab chain, which would otherwise leave the page empty. |
 
 ## Chain definition
 

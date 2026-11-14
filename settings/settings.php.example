@@ -86,6 +86,7 @@
         "getinfo_method"        => "getnetworkinfo",    // getnetworkinfo (Bitcoin Core 0.16+) or getinfo (old daemons)
         "getchainsync_method"   => "getblockchaininfo", // getblockchaininfo or mnsync (Dash family)
         "gethashps_multiplier"  => 1.0,                 // scales getnetworkhashps for daemons reporting another unit
+        "show_private_peers"    => false,               // list peers on private ranges (10/8, 192.168/16, 100.64/10, fc00::/7) on /network/ and in the addnode list; left false they are hidden, and left out of the peer counts
 
     // Masternodes
         "list_masternodes_method"   => "!listmasternodes", // a leading "!" disables the masternode list

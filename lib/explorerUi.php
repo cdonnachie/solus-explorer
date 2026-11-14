@@ -287,6 +287,35 @@ use WebSocket\Exception;
         }
         return $res;
     }
+    /* True when a peer address is one the public internet can reach, and so one
+       this explorer may publish. A private-range peer is the operator's own
+       infrastructure -- a second node on the LAN, a VPN mesh, a pool backend --
+       and printing it on a public page maps that network for anyone reading, as
+       well as putting an unroutable address in the addnode list.
+
+       filter_var does the range work, which is why this is not hand-rolled CIDR
+       arithmetic: NO_PRIV_RANGE covers 10/8, 172.16/12, 192.168/16 and fc00::/7;
+       NO_RES_RANGE covers 0/8, 127/8, 169.254/16, 240/4, ::1 and fe80::/10. It
+       does not cover 100.64/10, which is both carrier-grade NAT and where
+       Tailscale puts its mesh, so that one is checked here.
+
+       An address that is not an IP literal at all -- .onion, .i2p, .cjdns -- is
+       reachable by someone and is kept. getIpEndpointInfo leaves the brackets on
+       an IPv6 address and filter_var rejects those, so they come off first. */
+    function ui_isPublicPeerAddress($ip){
+        if (empty($ip)) { return false; }
+        $ip = trim((string)$ip, "[]");
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) { return true; }
+        if (filter_var($ip, FILTER_VALIDATE_IP,
+                       FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            return false;
+        }
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+            $n = ip2long($ip);
+            if ($n !== false && ($n & 0xffc00000) === 0x64400000) { return false; }
+        }
+        return true;
+    }
     function hex2rgba($color, $opacity = false) {
  
         $default = 'rgb(0,0,0)';
@@ -2497,11 +2526,18 @@ use WebSocket\Exception;
         return $res;
     }
     function getPeersInfo(){
+        global $settings;
+        /* Default closed: an operator who has never heard of this key gets the
+           private peers hidden, which is the safe way round. Set it true only on
+           a deployment whose whole network is private -- a regtest or lab chain
+           -- where filtering would otherwise empty the page. */
+        $show_private = (isset($settings["show_private_peers"]) && $settings["show_private_peers"]);
         $res = new stdClass();
         $res->outbound = array();
         $res->inbound  = array();
         $res->ipv6count = 0;
         $res->ipv4count = 0;
+        $res->privatecount = 0;
         $res->protocols = array();
         $res->clients = array();
         try {
@@ -2531,6 +2567,14 @@ use WebSocket\Exception;
                 if (isset($info['synced_headers'])) {$peer->headers     = (int)$info['synced_headers'];}    else {$peer->headers    = null;}
                 if (isset($info['inbound']))        {$peer->inbound     = (bool)$info['inbound'];}          else {$peer->inbound    = null;}
         
+                if (!empty($peer->ip) && !$show_private && !ui_isPublicPeerAddress($peer->ip)){
+                    /* Dropped before it reaches any count, chart, table or the
+                       addnode list -- all of those are rendered on a public page.
+                       Counted here only so the operator can account for the
+                       difference against the daemon's own getconnectioncount. */
+                    $res->privatecount += 1;
+                    continue;
+                }
                 if (!empty($peer->ip)){
                     $peer->ipver == 6 ? $res->ipv6count += 1 : $res->ipv4count += 1;
                     if ($peer->inbound){

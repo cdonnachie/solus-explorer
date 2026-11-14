@@ -28,13 +28,13 @@ the value.
 | `getblockcount/` | `legacy` | `{"timestamp":…, "blockcount":278456}` |
 | `getdifficulty/` | `legacy` | `{"timestamp", "difficulty_raw", "difficulty_hr", "dimension"}` |
 | `getnetworkhashps/` | `legacy` | `{"timestamp", "hashrate_raw", "hashrate_hr", "dimension"}` |
-| `getconnectioncount/` | `legacy` | `{"timestamp", "total", "inbound", "outbound", "ipv4", "ipv6"}` |
+| `getconnectioncount/` | `legacy` | `{"timestamp", "total", "inbound", "outbound", "ipv4", "ipv6"}`. Counts public peers only; see `show_private_peers`. |
 | `getblockhash/` | `index` (required), `legacy` | `{"timestamp", "index", "hash", "block_time"}`; text `Error: Block Not Found` |
 | `getblock/` | `hash` or `index` | raw daemon `getblock` result |
 | `getblocktemplate/` | none | raw daemon `getblocktemplate` result |
 | `getrawtransaction/` | `txid` (required), `decode=1` | hex as `text/plain`, or the decoded transaction as JSON with `decode=1` |
 | `sendrawtransaction/` **POST** | `hex` (required), `allowhighfees=true` | daemon result; `{"error":{"code":101}}` when `hex` is missing, `102` when it is not hex |
-| `getaddnodelist/` | none | `text/plain`, one `addnode=ip:port` line per known peer |
+| `getaddnodelist/` | none | `text/plain`, one `addnode=ip:port` line per outbound peer. Peers on private ranges are omitted — they are unroutable from outside the operator's network anyway; see `show_private_peers`. |
 
 ## Supply and masternodes
 
