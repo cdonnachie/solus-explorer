@@ -70,6 +70,8 @@
         "log_record_timeout_sec"    => 86400,   // TTL of LOADERLOG records (baked into the index)
         "calculate_chain_stats"     => true,    // daily CHAINSTATS buckets for the stats page
         "count_cache_ttl_sec"       => 600,     // how long a row count for a paged list is reused.
+        "address_chart_time_limit_ms" => 8000,   // server-side ceiling for the address movement chart query.
+        "chart_retry_after_sec"     => 600,     // how long an address that exceeded that ceiling is remembered.
                                                 // Counting an address with millions of movements costs
                                                 // seconds; only counts that were slow or large are kept.
                                                 // 0 disables the memo and counts on every page click.

@@ -114,6 +114,32 @@ use Decimal\Decimal;
         return max(0, $sec) * 1000;
     }
 
+    /* How long a visitor's address-movement chart may occupy the server.
+       Deliberately shorter than the 20 s the page tier allows a count: by the time
+       this is asked for, the page is already drawn and the chart is the last thing
+       on it, so a reader waiting on it is waiting on nothing they can see. */
+    function db_getAddressChartTimeLimitMs(){
+        global $settings;
+        $ms = (isset($settings["address_chart_time_limit_ms"]) && is_numeric($settings["address_chart_time_limit_ms"]))
+            ? (int)$settings["address_chart_time_limit_ms"] : 8000;
+        return max(0, $ms);
+    }
+    /* How long to remember that an address could not be charted inside that budget,
+       so the next reader is told immediately rather than paying the budget again. */
+    function db_getSlowMarkTtlMs(){
+        global $settings;
+        $sec = (isset($settings["chart_retry_after_sec"]) && is_numeric($settings["chart_retry_after_sec"]))
+             ? (int)$settings["chart_retry_after_sec"] : 600;
+        return max(0, $sec) * 1000;
+    }
+    function db_isMarkedSlow($key){
+        return mongo_getSlowMark($key, db_getSlowMarkTtlMs());
+    }
+    function db_markSlow($key){
+        if (db_getSlowMarkTtlMs() <= 0) { return; }
+        mongo_recordSlowMark($key);
+    }
+
     /* Cache only what was expensive to get.
        A count that returns in milliseconds gains nothing from a round trip to CACHE,
        and memoising every address a crawler asks after would grow the collection
@@ -393,9 +419,9 @@ use Decimal\Decimal;
     {
         return mongo_getAddressMovesHourlyAggregates($end_time, $hours) ;
     }
-    function db_getAddressMovesAggregatesByGranularity($address, $from_time, $to_time, $granularity_sec = 3600, $including_to_time = true)
+    function db_getAddressMovesAggregatesByGranularity($address, $from_time, $to_time, $granularity_sec = 3600, $including_to_time = true, $time_limit_ms = 0)
     {
-        return mongo_getAddressMovesAggregatesByGranularity($address, $from_time, $to_time, $granularity_sec, $including_to_time) ;
+        return mongo_getAddressMovesAggregatesByGranularity($address, $from_time, $to_time, $granularity_sec, $including_to_time, $time_limit_ms) ;
     }
 
     function db_getAddressMovesInOutTotalsByTimeRange($address, $start_time, $end_time)

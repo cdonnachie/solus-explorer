@@ -1674,6 +1674,23 @@ use Decimal\Decimal;
         if (PHP_SAPI !== 'cli' && !isset($opts['maxTimeMS'])) { $opts['maxTimeMS'] = 20000; }
         return $opts;
     }
+    /*
+     * The command-shaped sibling of mongo_webTimeLimit(). Aggregations go out
+     * through executeCommand(), where maxTimeMS is a field of the command
+     * rather than an option of a query, so the query-side limit above never
+     * covered them: until this existed, a visitor could start an aggregation
+     * that ran until something upstream gave up on the request.
+     *
+     * PHP's own max_execution_time is no help here. On Unix it counts CPU time
+     * consumed by the script, and a script blocked in the driver waiting on the
+     * server consumes none -- so the ceiling never arrives, however long the
+     * server takes. The limit has to be asked for on the server side.
+     */
+    function mongo_webCommandTimeLimit(array $cmd, $ms = 20000) : array {
+        $ms = (int)$ms;
+        if (PHP_SAPI !== 'cli' && $ms > 0 && !isset($cmd['maxTimeMS'])) { $cmd['maxTimeMS'] = $ms; }
+        return $cmd;
+    }
 
     function mongo_execDbQuery($query, $collection){
         global $dbm;
@@ -2845,6 +2862,40 @@ use Decimal\Decimal;
         }
     }
 
+    /*
+     * A note that some piece of work exceeded its time budget, so the next
+     * reader can be told that straight away instead of spending the budget
+     * over again. Lives in CACHE beside the count cache: same reasoning, same
+     * collection, and the documents are a few bytes each.
+     *
+     * Only failures are recorded. A successful chart is already fast enough to
+     * rebuild -- that is what being under the budget means -- and caching every
+     * address a crawler asked after would grow the collection for no gain.
+     */
+    function mongo_getSlowMark($key, $ttl_ms){
+        if ($ttl_ms <= 0) { return false; }
+        $query = new MongoDB\Driver\Query(['_id' => "SLOW:".$key], []);
+        $rows = mongo_execDbQuery($query, "CACHE")->toArray();
+        if (count($rows) == 0) { return false; }
+        if (!isset($rows[0]->t)) { return false; }
+        return ((milliseconds() - (float)$rows[0]->t) < $ttl_ms);
+    }
+    function mongo_recordSlowMark($key){
+        global $dbm;
+        global $settings;
+        $bulk = new MongoDB\Driver\BulkWrite(['ordered' => false]);
+        $bulk->update(
+            ["_id" => "SLOW:".$key],
+            ['$set' => ["t" => milliseconds()]],
+            ["upsert" => true]
+        );
+        try {
+            $dbm->executeBulkWrite($settings["db_name"] . ".CACHE", $bulk);
+        } catch (Exception $e) {
+            // A cache that cannot be written still leaves a working page.
+        }
+    }
+
     function mongo_getAddressMovesCountWithFilter($filter = array()){
         $query = $filter;
         return mongo_countDbCollectionQuery("ADDRESSMOVES", $query);
@@ -2956,9 +3007,17 @@ use Decimal\Decimal;
         $cursor = $dbm->executeCommand($settings['db_name'], $dbc);
         return $cursor->toArray();
     }
-    function mongo_getAddressMovesAggregatesByGranularity($address, $from_time, $to_time, $granularity_sec = 3600, $including_to_time = true){
+    function mongo_getAddressMovesAggregatesByGranularity($address, $from_time, $to_time, $granularity_sec = 3600, $including_to_time = true, $time_limit_ms = 0){
         global $dbm;
         global $settings;
+        /* A zero granularity divides by zero on the next line, and PHP 8 raises
+           DivisionByZeroError for that -- an Error, not an Exception, so a caller
+           guarding itself with catch (Exception) would still take a fatal. It would
+           also ask the server for a modulus by zero further down. Callers are
+           expected to clamp (ui_ClampChartGranularity), but a bucket width of zero
+           has no meaning at all, so refuse it here too rather than trust them. */
+        $granularity_sec = (int)$granularity_sec;
+        if ($granularity_sec < 1) { $granularity_sec = 3600; }
         $batchsize = floor((($to_time - $from_time) / $granularity_sec) + 2);
         if ($including_to_time){ // SIP-032
             $to_rule = '$lte';
@@ -2979,7 +3038,15 @@ use Decimal\Decimal;
             //     }},
             //     {"$sort": {"_id": 1}},
             //   ])
-        $dbc = new MongoDB\Driver\Command([
+        /* This one needs a ceiling more than most. The $match is served by
+           address_asc_time_desc_amount_asc, but receivedTotal and sentTotal sum
+           vouts_amount and vins_amount, which that index does not carry -- so
+           the server has to fetch every matching document to add them up. The
+           cost is therefore one document read per movement, and on an address
+           with a large history that outruns any web timeout. Measured on Avian
+           while the chain was still indexing: ~4.7 ms per movement, i.e. 44 ms
+           at 12 movements but 4.6 s at 979 and no answer at all at 45,938. */
+        $dbc = new MongoDB\Driver\Command(mongo_webCommandTimeLimit([
             'aggregate' => 'ADDRESSMOVES',
             'pipeline' => [
                 ['$match'   => [ 'address' => $address, 'move_time_sec' => [ '$gte' => $from_time, $to_rule => $to_time ]]],
@@ -2994,7 +3061,7 @@ use Decimal\Decimal;
                 ['$sort'    => ['_id' => 1]]
             ],
             'cursor' => ['batchSize' => $batchsize]
-        ]);
+        ], $time_limit_ms));
 
         $cursor = $dbm->executeCommand($settings['db_name'], $dbc);
         return $cursor->toArray();

@@ -30,3 +30,6 @@
 
 # loader output when cron redirects it (docs/installation.md section 11)
 /script/*.log
+
+# Playwright MCP scratch output (snapshots, console logs) from local debugging
+.playwright-mcp/

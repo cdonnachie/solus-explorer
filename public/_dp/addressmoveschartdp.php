@@ -25,28 +25,54 @@
 
     $is_valid_rid = db_validateRequestId($rid);
 
+    $chartData = array();
+    $unavailable = false;
+
     if ($is_valid_rid || ui_checkMagicNumber($mn)){
-        $chartGranularity = 86400;
         $to = time();
         $from = 0;
-        try {
-            $chartGranularity = (int)$gp;
-        } catch (Exception $e){}
+
+        /* A cast cannot throw, so the try/catch this replaced caught nothing -- and
+           (int) of a missing parameter is 0, which would have asked the server for a
+           modulus by zero and then stepped the fill loop by zero seconds. */
+        $chartGranularity = ui_ClampChartGranularity($gp);
 
         if (!is_null($address)){
-            $apt->createTimer("ui_getAddressMovesChartData",1);
-            //$chartData = ui_getAddressMovesChartData($address, $from, $to, $chartGranularity, 1000);
-            $chartData = ui_getAddressMovesChartDataSip070($address, $from, $to, $chartGranularity, 1000);
-            //$chartData = ui_getAddressMovesChartDataSip032($address, $from, $to, $chartGranularity, 1000); //SIP-032
-            $apt->stopTimer("ui_getAddressMovesChartData",1);
-        } else {
-            $chartData = array();
+            $slow_key = "AMOVESCHART:".$address.":".$chartGranularity;
+            if (db_isMarkedSlow($slow_key)){
+                /* Already known, recently, to be beyond the budget. Answer now
+                   rather than spending the budget again for the same answer. */
+                $unavailable = true;
+            } else {
+                $apt->createTimer("ui_getAddressMovesChartData",1);
+                try {
+                    $chartData = ui_getAddressMovesChartDataSip070(
+                        $address, $from, $to, $chartGranularity, 1000,
+                        db_getAddressChartTimeLimitMs()
+                    );
+                } catch (Throwable $e) {
+                    /* Budget gone, or the server went away mid-aggregation. There is
+                       no chart either way; say so, and remember it.
+                       Throwable, not Exception: PHP 8 raises Error for arithmetic
+                       faults, and this page is already drawn by the time the chart is
+                       fetched -- a decoration must not be able to turn it into a 500. */
+                    $unavailable = true;
+                    db_markSlow($slow_key);
+                }
+                $apt->stopTimer("ui_getAddressMovesChartData",1);
+            }
         }
-        header('Content-Type: application/json');
-        echo json_encode(array_values($chartData));
+    }
+
+    header('Content-Type: application/json');
+    if ($unavailable){
+        /* A status the caller can act on. Answering 200 with an empty series would
+           tell the reader this address has never moved, which is the one thing we
+           know to be untrue. */
+        http_response_code(503);
+        echo json_encode(array("status" => "error", "error" => "Chart data unavailable for this address"));
     } else {
-        header('Content-Type: application/json');
-        echo json_encode(array_values(array()));
+        echo json_encode(array_values($chartData));
     }
     $apt->stopTimer("total");
     ui_LogPageEvent($cip,"_dp/addressmoveschart",(int)$apt->getDurationMicroSeconds("total"),$_REQUEST);

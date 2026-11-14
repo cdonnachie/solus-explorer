@@ -886,6 +886,19 @@ use WebSocket\Exception;
         }
     }
 
+    /* The bucket width for a movement chart, from an untrusted query parameter.
+     *
+     * The caller used to cast and hope. A cast cannot fail, so a missing or
+     * non-numeric value became 0 -- which asks the server for a modulus by zero
+     * and then steps the gap-filling loop by zero seconds, i.e. forever. Anything
+     * outside a sane range falls back to a day.
+     */
+    function ui_ClampChartGranularity($gp, $default_sec = 86400) {
+        $sec = (int)$gp;
+        if ($sec < 60 || $sec > 31536000) { return (int)$default_sec; }
+        return $sec;
+    }
+
     /* Which query answers a page of the blocks list.
      *
      * The list is sorted newest-first and a MongoDB skip walks and discards, so a
@@ -3071,9 +3084,15 @@ use WebSocket\Exception;
         }
         return $res;
     }
-    function ui_getAddressMovesChartDataSip070($address, $from_time, $to_time, $granularity_sec, $time_multiplier = 1000){
+    function ui_getAddressMovesChartDataSip070($address, $from_time, $to_time, $granularity_sec, $time_multiplier = 1000, $time_limit_ms = 0){
         $res = array();
-        $data = db_getAddressMovesAggregatesByGranularity($address,$from_time,$to_time,$granularity_sec);
+        /* The bucket arithmetic below takes a modulus by this and then steps a loop
+           by it. At zero that is an uncaught DivisionByZeroError -- an Error rather
+           than an Exception -- which is what "?gp=0" used to get out of this
+           endpoint. Callers clamp, but the arithmetic is here, so refuse it here. */
+        $granularity_sec = (int)$granularity_sec;
+        if ($granularity_sec < 1) { $granularity_sec = 86400; }
+        $data = db_getAddressMovesAggregatesByGranularity($address,$from_time,$to_time,$granularity_sec,true,$time_limit_ms);
         if (count($data)>0){
             //create fer_timestamps
             $min_timestamp = ($data[0]->_id - ($data[0]->_id % $granularity_sec));

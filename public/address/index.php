@@ -583,6 +583,21 @@
                 }
                 showIndicator();
 
+                /* "done" only fires when the data arrives and parses. Nothing used
+                   to fire otherwise, so a request that failed or never came back
+                   left "Loading the data..." on screen for good -- the reader was
+                   told to keep waiting for something that had already stopped
+                   happening. Every ending now settles the indicator. */
+                var settled = false;
+
+                function chartUnavailable(msg) {
+                  if (settled) { return; }
+                  settled = true;
+                  indicatorLabel.text = msg;
+                  indicator.hide(0);
+                  indicator.show();
+                }
+
                 chart.dataSource.events.on("loadstarted",function(e){
                   indicatorLabel.text = "Loading the data, this may take a while...";
                 });
@@ -590,9 +605,24 @@
                   indicatorLabel.text = "Parsing the data...";
                 });
                 chart.dataSource.events.on("done",function(e){
+                  settled = true;
                   indicatorLabel.text = "All done";
                   hideIndicator();
                 });
+                chart.dataSource.events.on("error",function(e){
+                  chartUnavailable("Movement chart is unavailable for this address.");
+                });
+                chart.dataSource.events.on("parseerror",function(e){
+                  chartUnavailable("Movement chart data could not be read.");
+                });
+
+                /* A backstop for the ending that fires no event at all: a connection
+                   dropped in the middle, or an edge timeout above this server. The
+                   server gives itself a few seconds for this query, so anything still
+                   unsettled this long afterwards is not coming. */
+                setTimeout(function(){
+                  chartUnavailable("Movement chart is unavailable for this address.");
+                }, 30000);
 
 
 
