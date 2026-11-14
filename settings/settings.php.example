@@ -201,6 +201,11 @@
         //"consent_countries" => ["DE", "FR"], // countries shown the consent banner; default EU, EEA, UK, CH
         "google_tag_id"     => "",          // Google Tag Manager container id
         "cloudflare_beacon_token" => "",    // Cloudflare Web Analytics
+        // Set this instead when the Cloudflare zone injects its own Web Analytics
+        // beacon at the edge (dashboard setting, not this app). It only widens the
+        // CSP so that beacon is not blocked -- the app still emits nothing, so there
+        // is no second beacon. Leave both off if you do not use Web Analytics.
+        "cloudflare_zone_beacon" => false,
         "trustpilot"        => [],          // ["business_id" => ..., "template_id" => ..., "token" => ..., "review_url" => "https://www.trustpilot.com/review/<domain>"]
         "ads_priority"      => [],          // provider order, e.g. ["sevio", "bitmedia", "adsense"]
         "ads_fallback_ms"   => 1000,        // ms a provider gets to fill a slot; or per provider: ["sevio" => 3500, "default" => 900]

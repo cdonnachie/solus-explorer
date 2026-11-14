@@ -317,6 +317,7 @@ List the exact string that arrives at PHP.
 | `consent_countries` | EU, EEA (IS, LI, NO), GB, CH | ISO 3166-1 alpha-2 codes of the countries in consent scope. The visitor's country is read from Cloudflare's `CF-IPCountry` header; a missing or unknown country (`XX`) counts as in scope, so without Cloudflare every visitor gets the banner or the stub. With ads on, the response header `X-Consent-Mode: <country>; cmp|deny-stub|none` shows the decision. |
 | `google_tag_id` | `""` | Google Tag Manager container; injected on every page when non-empty, regardless of consent. |
 | `cloudflare_beacon_token` | `""` | Cloudflare Web Analytics token; the beacon loads on every page except `/admin-console/` when set. |
+| `cloudflare_zone_beacon` | `false` | Set when the **Cloudflare zone** injects its own Web Analytics beacon at the edge. Widens the CSP to allow it; the app still emits no beacon of its own. |
 | `trustpilot` | `[]` | Trustpilot widget in the side menu: `["business_id" => ..., "template_id" => ..., "token" => ..., "review_url" => ...]`. Shown when `business_id` and `template_id` are set. Replaces `trustpilot_enabled`. |
 | `subscription_enabled`, `subscription_endtime` | | Hosted-service expiry. After the end time the block loader stops; 7 days later the API answers 402. Keep `false` on a self-hosted explorer. |
 
@@ -361,7 +362,7 @@ if a corporate proxy, a CDN rule or a second CSP filters requests, allow them:
 | `cdnjs.cloudflare.com` | every page | perfect-scrollbar 1.4.0 (side menu) |
 | `cdn.amcharts.com` | overview, address, assets, stats, admin dashboard | amCharts 4.10.40 |
 | `www.googletagmanager.com` | `google_tag_id` set | Google Tag Manager |
-| `static.cloudflareinsights.com`, `cloudflareinsights.com` | `cloudflare_beacon_token` set | Cloudflare Web Analytics |
+| `static.cloudflareinsights.com`, `cloudflareinsights.com` | `cloudflare_beacon_token` **or** `cloudflare_zone_beacon` set | Cloudflare Web Analytics. The zone can inject this beacon at the edge whatever `settings.php` says — it rewrites the HTML on the way out, for browser-like requests only, so it does not show up in `curl` or in local testing. If the browser console reports it blocked by CSP, set `cloudflare_zone_beacon`. |
 | `widget.trustpilot.com` | `trustpilot` set | Trustpilot widget |
 | ad, consent and font hosts listed in `$ads_core` and `$sevio_partners` (`layout_adstack.php`) | `ads_enabled` true, never on `/admin-console/` | Ad waterfall and InMobi Choice |
 

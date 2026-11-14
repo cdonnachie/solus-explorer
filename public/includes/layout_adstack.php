@@ -25,6 +25,18 @@
   // Optional third parties; each one is loaded and allowed by the CSP only when configured.
   $gtm_on = getGoogleTagId() != "";
   $beacon_on = !empty($settings["cloudflare_beacon_token"]);
+  /* Two different questions, and they were sharing one answer.
+     - $beacon_on: does THIS APP emit the beacon tag? Only when a token is set.
+     - $beacon_zone: does the CLOUDFLARE ZONE inject its own at the edge? That is a
+       dashboard setting this app cannot see, and it happens whatever settings.php
+       says -- Web Analytics rewrites the HTML on the way out, for browser-like
+       requests only, so it is invisible to curl and to any local test.
+     Tying the CSP to $beacon_on alone meant a zone-injected beacon was blocked on
+     every page view, with no setting here that could fix it. Set
+     cloudflare_zone_beacon when the zone injects one; the app still emits nothing,
+     so there is no second beacon. */
+  $beacon_zone = !empty($settings["cloudflare_zone_beacon"]);
+  $beacon_csp = $beacon_on || $beacon_zone;
   $tp = $settings["trustpilot"] ?? [];
   $tp_on = !empty($tp["business_id"]) && !empty($tp["template_id"]);
 
@@ -116,7 +128,7 @@
       //"'strict-dynamic' 'nonce-".$csp_nonce."' " .
       "ajax.googleapis.com cdn.amcharts.com cdnjs.cloudflare.com" .
       ($gtm_on ? " www.googletagmanager.com" : "") .
-      ($beacon_on ? " static.cloudflareinsights.com" : "") .
+      ($beacon_csp ? " static.cloudflareinsights.com" : "") .
       ($tp_on ? " widget.trustpilot.com" : "") .
       $ads_core . $sevio_partners,
 
@@ -128,7 +140,7 @@
     // XHR/fetch/beacons (ad requests, CMP, analytics)
     "connect-src 'self'" .
       ($gtm_on ? " www.googletagmanager.com google-analytics.com *.google-analytics.com" : "") .
-      ($beacon_on ? " cloudflareinsights.com static.cloudflareinsights.com" : "") .
+      ($beacon_csp ? " cloudflareinsights.com static.cloudflareinsights.com" : "") .
       $ads_core . $sevio_partners,
 
     // Images: the blanket https: already covers every ad/measurement pixel,
