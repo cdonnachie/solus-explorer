@@ -590,7 +590,28 @@
                    happening. Every ending now settles the indicator. */
                 var settled = false;
 
+                /* amCharts answers a failed load with a popup of its own, reading
+                   "Unable to load file: <url>". That shows the reader an internal
+                   endpoint and the single-use request id in the query string, and
+                   tells them nothing they can act on. The Component attaches that
+                   listener when dataSource.url is first set, which is well before
+                   the handlers below, so by the time one of them runs the popup is
+                   already open and can simply be closed.
+
+                   Closed again on the next tick because the ordering is amCharts'
+                   to change, not ours: if a later version dispatches to its own
+                   listener after these, the first close lands before the popup
+                   exists and would otherwise leave it on screen. closeModal() is
+                   guarded internally and does nothing when nothing is open. */
+                function closeAmchartsErrorPopup() {
+                  try {
+                    chart.closeModal();
+                    setTimeout(function(){ try { chart.closeModal(); } catch (e) {} }, 0);
+                  } catch (e) {}
+                }
+
                 function chartUnavailable(msg) {
+                  closeAmchartsErrorPopup();
                   if (settled) { return; }
                   settled = true;
                   indicatorLabel.text = msg;
