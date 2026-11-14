@@ -118,11 +118,19 @@ Paged collections carry paging in `meta`:
 }
 ```
 
-`total` is a **count of rows**, not the highest id. (`_dp/blocksdp.php` currently sets
-`recordsTotal` from `db_getLastDbBlockNumber()`, the highest block *index*, so it
-undercounts by one.) Where a provider caps paging — `blocksdp.php` clamps `skip` to
-100,000 — keep the cap and report it, rather than letting a client ask for an unbounded
-skip.
+`total` is a **count of rows**, not the highest id. `_dp/blocksdp.php` used to set
+`recordsTotal` from `db_getLastDbBlockNumber()`, the highest block *index*, and so
+undercounted by one; it now reports the count. That is not cosmetic where paging is
+computed from it — one out makes the final page unreachable.
+
+Where a provider caps paging, keep the cap: `blocksdp.php` bounds `skip` at 100,000
+because a MongoDB skip walks and discards, and the endpoint is public and
+unauthenticated, so an uncapped skip lets a client make the database walk millions of
+documents per request. But a cap on a newest-first list falls on the *oldest* rows,
+which is where "last page" points — so do not simply clamp and serve whatever that
+lands on. `blocksdp.php` answers pages near the far end from the opposite sort order,
+where they are a skip of a few, and reverses the rows; only the unreachable middle is
+clamped. A new endpoint should do the same, or expose a cursor instead of an offset.
 
 The existing DataTables envelope (`draw` / `recordsTotal` / `recordsFiltered` / `data`)
 stays for as long as DataTables is the consumer. While an endpoint serves both, put the

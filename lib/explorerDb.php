@@ -103,6 +103,10 @@ use Decimal\Decimal;
         global $settings;
         return mongo_getLastBlocks($limit, $skip, $filter);
     }
+    function db_getFirstBlocks($limit = 100, $skip = 0, $filter = null)
+    {
+        return mongo_getFirstBlocks($limit, $skip, $filter);
+    }
     function db_getBlocksByTimeRange($start_time, $end_time, $sort_asc = false, $gte_start = false, $lte_end = true)
     {
         return mongo_getBlocksByTimeRange($start_time, $end_time, $sort_asc, $gte_start, $lte_end);

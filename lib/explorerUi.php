@@ -886,6 +886,42 @@ use WebSocket\Exception;
         }
     }
 
+    /* Which query answers a page of the blocks list.
+     *
+     * The list is sorted newest-first and a MongoDB skip walks and discards, so a
+     * deep page costs the whole prefix. Capping the skip bounds that, but the capped
+     * region is the OLD end of the chain -- exactly where "Last" points -- so a plain
+     * clamp lands the reader an arbitrary 100,000 blocks from the tip instead.
+     *
+     * Pages near the far end are reached from the other sort order instead, where
+     * they are a skip of a few rather than millions. Only the middle stays clamped,
+     * and nothing navigates there by clicking.
+     *
+     * $rec is the ROW COUNT, not the highest index. Returns direction, skip and limit;
+     * an "asc" plan must have its rows reversed so the page still reads newest-first.
+     */
+    function ui_PlanBlockPage($rec, $skip, $limit, $cap = 100000) {
+        $rec   = max(0, (int)$rec);
+        $skip  = max(0, (int)$skip);
+        $limit = max(0, (int)$limit);
+        $plan  = array("dir" => "desc", "skip" => $skip, "limit" => $limit, "clamped" => false);
+        if ($limit === 0 || $rec === 0) { $plan["limit"] = 0; return $plan; }
+
+        if ($skip <= $cap) { return $plan; }
+
+        $from_end = $rec - $skip - $limit;
+        if ($from_end < 0) {
+            /* Runs past block 0: a partial final page. Take only what is there --
+               note a limit of 0 means "no limit" to MongoDB, never an empty result. */
+            $tail = $limit + $from_end;
+            return array("dir" => "asc", "skip" => 0, "limit" => max(0, $tail), "clamped" => false);
+        }
+        if ($from_end <= $cap) {
+            return array("dir" => "asc", "skip" => $from_end, "limit" => $limit, "clamped" => false);
+        }
+        return array("dir" => "desc", "skip" => $cap, "limit" => $limit, "clamped" => true);
+    }
+
     /* The proof-of-work algorithm a block was mined with, for chains that mine with
      * more than one. Returns null for chains that do not configure it, which is every
      * chain by default -- callers render nothing at all in that case.

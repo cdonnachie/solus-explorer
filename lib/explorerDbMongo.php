@@ -1875,6 +1875,19 @@ use Decimal\Decimal;
         $cursor = mongo_execDbQuery($query, "BLOCKS");
         return $cursor->toArray();
     }
+    /* Oldest-first page of blocks. The mirror of mongo_getLastBlocks(), so a page
+       near the far end of the list can be reached by skipping from the near end of
+       the other sort order -- a skip of 4.8M walks and discards 4.8M documents,
+       while the same page is a skip of a few from this direction. */
+    function mongo_getFirstBlocks($limit = 100, $skip = 0, $filter = null){
+        if (is_null($filter) || !is_array($filter)){$filter = array();}
+        $query = new MongoDB\Driver\Query(
+            $filter,
+            ['sort' => ['block_ix' => 1], 'skip' => $skip, 'limit' => $limit]
+        );
+        $cursor = mongo_execDbQuery($query, "BLOCKS");
+        return $cursor->toArray();
+    }
     function mongo_getBlocksByTimeRange($start_time, $end_time, $sort_asc = false, $gte_start = false, $lte_end = true){
         if ($gte_start) {
             $scond = '$gte';

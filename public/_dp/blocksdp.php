@@ -20,18 +20,42 @@
   // $draw=(int)$_POST["draw"];
   // $skip = (int)$_POST["start"];
   // $limit = (int)$_POST["length"];
-  $rec = db_getLastDbBlockNumber();
+  /* A skip in MongoDB walks and discards, so a deep page costs the whole prefix.
+     The cap below keeps that bounded -- but the table is sorted newest-first, so
+     the capped region is the OLD end of the chain, which is exactly where the
+     "Last" button points. Rather than clamp it and silently land the reader
+     100,000 blocks from the tip, reach those pages from the other direction:
+     the oldest-first sort makes them a skip of a few instead of millions. Only
+     the untouchable middle is still clamped, and nothing navigates there by
+     clicking. */
+  $SKIP_CAP = 100000;
+
+  $last_ix = db_getLastDbBlockNumber();
+  /* Row count, not the highest index. Blocks run 0..last_ix with no gaps -- the
+     loader fills them in order -- so there is one more row than the index. The
+     distinction matters here: the offset of the final page is computed from this,
+     and being one out makes block 0 unreachable, which is the whole complaint. */
+  $rec = ($last_ix >= 0) ? $last_ix + 1 : 0;
+
   $draw = (int)sanitizeInput("draw","POST");
-  $skip = (int)sanitizeInput("start","POST");
-  $skip = max(0, min($skip, 100000));
+  $skip = max(0, (int)sanitizeInput("start","POST"));
   $limit = (int)sanitizeInput("length","POST");
 
   if($limit>500 || $limit <= 0){ $limit = 500;}
 
   $result = array();
-  if($rec >= 0) {
+  if($last_ix >= 0) {
     $rpc_bc = getRpcBlockCount();
-    $blks = db_getLastBlocks($limit, $skip); 
+
+    $plan = ui_PlanBlockPage($rec, $skip, $limit, $SKIP_CAP);
+    if ($plan["limit"] <= 0) {
+      $blks = array();
+    } else if ($plan["dir"] === "asc") {
+      // Reversed so the page still reads newest-first, like every other page.
+      $blks = array_reverse(db_getFirstBlocks($plan["limit"], $plan["skip"]));
+    } else {
+      $blks = db_getLastBlocks($plan["limit"], $plan["skip"]);
+    }
     foreach($blks as $blk) {
         $m = array();
         $conf = $rpc_bc - $blk->block_ix +1;
