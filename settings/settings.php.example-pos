@@ -41,6 +41,9 @@
         //         ["from_time" => 0,          "algos" => ["X16R"]],
         //         ["from_time" => 1638847406, "algos" => ["X16RT", "MinotaurX"]],
         //     ],
+        //     // Optional. Badge colour per algorithm; without it they are assigned in
+        //     // order from a cycle that avoids the colours the confirmations badge uses.
+        //     // "badges" => ["X16RT" => "badge-info", "MinotaurX" => "badge-dark"],
         // ],
 
     // Zerocoin (only for chains that had it)

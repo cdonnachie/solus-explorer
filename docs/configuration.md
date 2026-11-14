@@ -81,6 +81,21 @@ is at or past. Within an era, `version_bit` of the block version selects `algos[
 when set and `algos[0]` when clear. An era naming a single algorithm ignores the bit.
 Order does not matter — the eras are scanned, not assumed sorted.
 
+Each algorithm gets a badge colour so two of them are told apart at a glance rather
+than read word by word. Colours are assigned in the order the algorithms are listed,
+from a cycle of `badge-info`, `badge-dark`, `badge-secondary`, `badge-default`,
+`badge-primary`. That cycle deliberately skips `badge-success`, `badge-warning` and
+`badge-danger`, because the blocks list already spends those three on the confirmations
+badge in the next column. Override per algorithm with an optional `badges` map:
+
+```php
+"badges" => ["X16RT" => "badge-info", "MinotaurX" => "badge-warning"],
+```
+
+Any of the nine Bootstrap badge variants is accepted; anything else is ignored rather
+than emitted, since an unstyled word on the page reads as a rendering fault. Every
+variant is defined by the skin from its own tokens, so a custom skin carries through.
+
 **Why time and not height.** These forks activate on a timestamp in consensus, not a
 height. The example above is Avian, whose `UPGRADE_X16RT_SWITCH` and `UPGRADE_DUAL_ALGO`
 are both `nTimestamp` values one second apart, which is why they collapse into one era

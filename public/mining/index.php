@@ -304,7 +304,16 @@
                   <tbody>
                   <?php foreach ($pow_algos as $pa) : if (!is_object($pa)) { continue; } ?>
                     <tr class="text-center">
-                      <td class="font-weight-bold"><?php echo htmlspecialchars($pa->name, ENT_QUOTES, "UTF-8"); ?></td>
+                      <td><?php
+                            /* The same badge the blocks list uses, so the colour here
+                               teaches the colour there. Falls back to the plain name if
+                               a cache document predates the badge field. */
+                            $pa_name  = htmlspecialchars($pa->name, ENT_QUOTES, "UTF-8");
+                            $pa_badge = isset($pa->badge) ? ui_GetPowAlgoBadgeClass($pa->name) : "";
+                            echo $pa_badge === ""
+                                ? '<span class="font-weight-bold">'.$pa_name.'</span>'
+                                : '<span class="blocklist-algo badge '.$pa_badge.'">'.$pa_name.'</span>';
+                          ?></td>
                       <td><?php echo number_format((int)$pa->blocks); ?></td>
                       <td><?php echo number_format((float)$pa->percent, 1); ?>%</td>
                     </tr>

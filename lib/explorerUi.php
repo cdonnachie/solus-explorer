@@ -995,9 +995,43 @@ use WebSocket\Exception;
             $row->name    = (string)$name;
             $row->blocks  = $n_blk;
             $row->percent = round(100 * $n_blk / $total, 1);
+            $row->badge   = ui_GetPowAlgoBadgeClass($name, $at_time);
             array_push($res, $row);
         }
         return $res;
+    }
+
+    /* Badge class for an algorithm, so two algorithms are told apart at a glance in
+     * a list rather than read word by word.
+     *
+     * The default cycle deliberately skips success / warning / danger: the blocks
+     * list already spends those three on the confirmations badge in the next column,
+     * and one colour carrying two meanings on one row is worse than a duller palette.
+     * An operator who wants them anyway can say so:
+     *
+     *   "badges" => ["X16RT" => "badge-info", "MinotaurX" => "badge-warning"],
+     *
+     * Every variant is defined by the skin from its own tokens, so this follows a
+     * custom skin instead of hard-coding colours that would clash with one.
+     */
+    function ui_GetPowAlgoBadgeClass($algo, $at_time = null) {
+        global $settings;
+        $allowed = array("badge-primary","badge-secondary","badge-success","badge-danger",
+                         "badge-warning","badge-info","badge-light","badge-dark","badge-default");
+
+        if (isset($settings["pow_algos"]["badges"]) && is_array($settings["pow_algos"]["badges"])
+            && isset($settings["pow_algos"]["badges"][$algo])) {
+            $want = (string)$settings["pow_algos"]["badges"][$algo];
+            /* An unrecognised class is ignored rather than emitted: an unstyled word
+               on the page reads as a rendering fault, not as a configuration typo. */
+            if (in_array($want, $allowed, true)) { return $want; }
+        }
+
+        $cycle = array("badge-info","badge-dark","badge-secondary","badge-default","badge-primary");
+        $names = ui_GetPowAlgoNames($at_time);
+        $ix = array_search($algo, $names, true);
+        if ($ix === false) { $ix = 0; }
+        return $cycle[$ix % count($cycle)];
     }
 
     /* The algo as a badge, or "" when the chain does not configure one. One renderer
@@ -1007,7 +1041,8 @@ use WebSocket\Exception;
         $algo = ui_GetBlockPowAlgo($block_version, $block_time_sec);
         if (is_null($algo) || $algo === "") { return ""; }
         $safe = htmlspecialchars($algo, ENT_QUOTES, "UTF-8");
-        return "<span class='blocklist-algo badge badge-info ".$extra_class."' title='Mined with ".$safe."'>".$safe."</span>";
+        $cls  = ui_GetPowAlgoBadgeClass($algo, $block_time_sec);
+        return "<span class='blocklist-algo badge ".$cls." ".$extra_class."' title='Mined with ".$safe."'>".$safe."</span>";
     }
 
     function getSkinName(){
