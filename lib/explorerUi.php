@@ -886,6 +886,77 @@ use WebSocket\Exception;
         }
     }
 
+    /* The proof-of-work algorithm a block was mined with, for chains that mine with
+     * more than one. Returns null for chains that do not configure it, which is every
+     * chain by default -- callers render nothing at all in that case.
+     *
+     * settings["pow_algos"] is a list of eras, each starting at a block timestamp:
+     *
+     *   "pow_algos" => [
+     *       "version_bit" => 16,
+     *       "eras" => [
+     *           ["from_time" => 0,          "algos" => ["X16R"]],
+     *           ["from_time" => 1638847406, "algos" => ["X16RT", "MinotaurX"]],
+     *       ],
+     *   ]
+     *
+     * Within an era the version bit selects between algos[0] (clear) and algos[1]
+     * (set); an era naming one algo ignores the bit entirely.
+     *
+     * Eras are keyed on time, not height, because that is how the consensus rules
+     * themselves activate: Avian's UPGRADE_X16RT_SWITCH and UPGRADE_DUAL_ALGO are
+     * nTimestamp values, so there is no height to key on without hard-coding one that
+     * is only true for one chain.
+     *
+     * This deliberately does not use the daemon's own `powtype` field. That field is
+     * derived from the same version bit, so it cannot see the single-algo era before
+     * the fork and reports Avian's first ~274,000 blocks as X16RT when they are X16R.
+     * Reading the era from configuration is both cheaper -- no RPC call, and both
+     * inputs are already in every BLOCKS document -- and more accurate.
+     */
+    function ui_GetBlockPowAlgo($block_version, $block_time_sec) {
+        global $settings;
+        if (!isset($settings["pow_algos"]) || !is_array($settings["pow_algos"])) { return null; }
+        $cfg = $settings["pow_algos"];
+        if (!isset($cfg["eras"]) || !is_array($cfg["eras"]) || count($cfg["eras"]) == 0) { return null; }
+        if (is_null($block_time_sec) || !is_numeric($block_time_sec)) { return null; }
+
+        /* The latest era the block is at or past. Scanned rather than assumed ordered:
+           an operator hand-editing settings.php will eventually list these out of
+           order, and silently relabelling a chain's history is a worse outcome than
+           walking a two-element array. */
+        $era = null;
+        foreach ($cfg["eras"] as $candidate) {
+            if (!is_array($candidate)) { continue; }
+            if (!isset($candidate["algos"]) || !is_array($candidate["algos"]) || count($candidate["algos"]) == 0) { continue; }
+            $from = isset($candidate["from_time"]) ? (int)$candidate["from_time"] : 0;
+            if ((int)$block_time_sec < $from) { continue; }
+            if (is_null($era) || $from >= $era["from"]) {
+                $era = array("from" => $from, "algos" => array_values($candidate["algos"]));
+            }
+        }
+        if (is_null($era)) { return null; }
+        if (count($era["algos"]) == 1) { return (string)$era["algos"][0]; }
+
+        $bit = isset($cfg["version_bit"]) ? (int)$cfg["version_bit"] : -1;
+        if ($bit < 0 || $bit > 31 || is_null($block_version) || !is_numeric($block_version)) {
+            /* A multi-algo era whose discriminator we cannot evaluate. Saying nothing
+               is right: naming the first algo would be a guess presented as a fact. */
+            return null;
+        }
+        return (string)(((int)$block_version & (1 << $bit)) != 0 ? $era["algos"][1] : $era["algos"][0]);
+    }
+
+    /* The algo as a badge, or "" when the chain does not configure one. One renderer
+       so the blocks list and the block page cannot drift, and so the escaping of the
+       operator-supplied algo name happens in exactly one place. */
+    function ui_GetBlockPowAlgoTag($block_version, $block_time_sec, $extra_class = "mx-1") {
+        $algo = ui_GetBlockPowAlgo($block_version, $block_time_sec);
+        if (is_null($algo) || $algo === "") { return ""; }
+        $safe = htmlspecialchars($algo, ENT_QUOTES, "UTF-8");
+        return "<span class='blocklist-algo badge badge-info ".$extra_class."' title='Mined with ".$safe."'>".$safe."</span>";
+    }
+
     function getSkinName(){
         global $settings;
         if (array_key_exists("explorer_skin",$settings)){

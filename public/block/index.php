@@ -266,6 +266,20 @@
                     <td class="primary-text p-1">Consensus</td>
                     <td class="font-weight-bold text-right p-1"><?php echo $br->type; ?></td>
                   </tr>
+                  <?php
+                    /* Multi-algo chains only: ui_GetBlockPowAlgo() returns null unless
+                       settings["pow_algos"] is configured, and the row is then absent
+                       rather than blank. */
+                    $pow_algo = ui_GetBlockPowAlgo(
+                        isset($br->block_version)  ? $br->block_version  : null,
+                        isset($br->block_time_sec) ? $br->block_time_sec : null);
+                    if (!is_null($pow_algo)) :
+                  ?>
+                  <tr>
+                    <td class="primary-text p-1">Algorithm</td>
+                    <td class="font-weight-bold text-right p-1"><?php echo htmlspecialchars($pow_algo, ENT_QUOTES, "UTF-8"); ?></td>
+                  </tr>
+                  <?php endif; ?>
                   <?php 
                     if ($br->type == "PoS"){
                       echo '              <tr>

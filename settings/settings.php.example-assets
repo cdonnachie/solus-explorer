@@ -29,6 +29,20 @@
         "coin_name"     => "Example",       // human-readable name; falls back to the upper-case symbol
         "maturity"      => 100,             // coinbase maturity in blocks, also the "synced" threshold
 
+        // Multi-algo chains only. Omit it and no algorithm is shown anywhere, which is
+        // what every single-algo chain wants. Eras are keyed on the block timestamp
+        // because that is how these forks activate in consensus -- there is no height
+        // to key on. Within an era the version bit picks algos[1] when set and
+        // algos[0] when clear; an era naming one algo ignores the bit.
+        // Example (Avian: X16R until the Dec 2021 fork, X16RT + MinotaurX after):
+        // "pow_algos" => [
+        //     "version_bit" => 16,
+        //     "eras" => [
+        //         ["from_time" => 0,          "algos" => ["X16R"]],
+        //         ["from_time" => 1638847406, "algos" => ["X16RT", "MinotaurX"]],
+        //     ],
+        // ],
+
     // Zerocoin (only for chains that had it)
         "z_supply_mark" => "zEXAMPLEsupply", // property name of the zerocoin supply in getblock/getinfo
         "z_txid"        => "0000000000000000000000000000000000000000000000000000000000000000", // vin txid marking a zerocoin spend

@@ -54,6 +54,44 @@ timeouts, and the hashrate always comes from `getnetworkhashps`.
 | `maturity` | Coinbase maturity in blocks. Also the "synced" threshold and the suggested `maxreorg`. |
 | `z_supply_mark`, `z_txid` | Zerocoin: property name of the zerocoin supply in `getblock`/`getinfo`, and the vin txid that marks a zerocoin spend. |
 | `burn_addresses` | Addresses and script types (`nulldata`, `Fee Collector`) whose balance counts as burned. |
+| `pow_algos` | Multi-algo chains only; absent by default. Shows which algorithm mined each block. See below. |
+
+### Proof-of-work algorithms (`pow_algos`)
+
+Optional, and absent from all three templates. Without it no algorithm is shown
+anywhere, which is what a single-algorithm chain wants. With it, the blocks list gains
+a badge beside each block hash and the block page gains an **Algorithm** row.
+
+```php
+"pow_algos" => [
+    "version_bit" => 16,
+    "eras" => [
+        ["from_time" => 0,          "algos" => ["X16R"]],
+        ["from_time" => 1638847406, "algos" => ["X16RT", "MinotaurX"]],
+    ],
+],
+```
+
+An era begins at `from_time`, a block timestamp; a block belongs to the latest era it
+is at or past. Within an era, `version_bit` of the block version selects `algos[1]`
+when set and `algos[0]` when clear. An era naming a single algorithm ignores the bit.
+Order does not matter — the eras are scanned, not assumed sorted.
+
+**Why time and not height.** These forks activate on a timestamp in consensus, not a
+height. The example above is Avian, whose `UPGRADE_X16RT_SWITCH` and `UPGRADE_DUAL_ALGO`
+are both `nTimestamp` values one second apart, which is why they collapse into one era
+boundary rather than two. Keying on height would mean hard-coding a number that is only
+correct for one chain and only approximately.
+
+**Why not the daemon's `powtype`.** Avian's `getblock` returns a `powtype` field, but it
+is derived from the same version bit, so it cannot see the single-algorithm era before
+the fork — it reports the first ~274,000 blocks as `x16rt` when they were mined with
+X16R. Reading the era from configuration is both more accurate and free: `block_version`
+and `block_time_sec` are already stored on every block, so nothing is re-indexed and no
+RPC call is made.
+
+If a block's version is missing and its era names more than one algorithm, nothing is
+shown for that block rather than a guess.
 
 ### Block reward schemes (`block_schemes`)
 

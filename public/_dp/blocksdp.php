@@ -53,6 +53,11 @@
           }
         }
 
+        // Multi-algo chains only; "" for every chain that does not configure pow_algos.
+        $algo_tag = ui_GetBlockPowAlgoTag(
+            isset($blk->block_version)  ? $blk->block_version  : null,
+            isset($blk->block_time_sec) ? $blk->block_time_sec : null);
+
         $or_tag = "";
         if (isset($settings['show_op_return']) && $settings['show_op_return'] && isset($blk->has_op_return) && $blk->has_op_return) {
           if (isset($settings['op_return_symbol']) && !empty($settings['op_return_symbol'])) {
@@ -70,7 +75,7 @@
           // Height
           array_push($m,"<a class='blocklist-height ' href='".$settings["explorer_address"]."/block/?blockheight=".$blk->block_ix."' title='Navigate to block ".$blk->block_ix."'>".$blk->block_ix."</a>");
           // Hash
-          array_push($m,"<a class='blocklist-hash primary-text mr-1' href='".$settings["explorer_address"]."/block/?blockhash=".$blk->_id."' title='Navigate to block $blk->_id'>" .$blk->_id."</a>".$rew_type.$or_tag);
+          array_push($m,"<a class='blocklist-hash primary-text mr-1' href='".$settings["explorer_address"]."/block/?blockhash=".$blk->_id."' title='Navigate to block $blk->_id'>" .$blk->_id."</a>".$rew_type.$or_tag.$algo_tag);
           // Confirmations
           array_push($m,"<span class='blocklist-confirmations badge badge-".$conf_class." h6 mb-0'>".$conf."</span>");
           // Block Size
