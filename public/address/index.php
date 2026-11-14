@@ -394,6 +394,21 @@
         <div class="card card-body fading-front">
           <div class="row primary-text text-center">
             <div class="col-12"><span class="h6 h6-responsive">Address Movements</span></div>
+<?php
+            /* An address with more movements than the chart's cap is charted from
+               its cap-th most recent one. Say so: a date axis that quietly starts
+               part-way through the history reads as the whole of it. The provider
+               derives the same window independently, so this is a label, not an
+               instruction to it. */
+            $chart_from = empty($address) ? 0 : db_getAddressChartFromTime($address);
+            if ($chart_from > 0){
+?>
+            <div class="col-12"><span class="small grey-text">most recent <?php
+                echo number_format(db_getAddressChartMaxMoves()); ?> movements, from <?php
+                echo date("j M Y", $chart_from); ?> &mdash; this address has too many to chart in full</span></div>
+<?php
+            }
+?>
           </div>
 
           <div id="ac_mov" class="stats-chart pt-2"></div>

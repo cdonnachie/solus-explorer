@@ -132,6 +132,29 @@ use Decimal\Decimal;
              ? (int)$settings["chart_retry_after_sec"] : 600;
         return max(0, $sec) * 1000;
     }
+    /* How many movements the address movement chart will aggregate at most.
+       0 disables the cap and charts the whole history however long it is. */
+    function db_getAddressChartMaxMoves(){
+        global $settings;
+        $n = (isset($settings["address_chart_max_moves"]) && is_numeric($settings["address_chart_max_moves"]))
+            ? (int)$settings["address_chart_max_moves"] : 250000;
+        return max(0, $n);
+    }
+
+    /* The unix time the chart for this address should start at: 0 for its whole
+       history, or the cap-th most recent movement's time when charting all of it
+       would cost more than the budget allows.
+       Both the page and the provider ask for this independently -- the page to
+       say so on screen, the provider to bound its own query. The provider does
+       not take the window from the request: a public parameter cannot be relied
+       on to protect the server that honours it. */
+    function db_getAddressChartFromTime($address){
+        $max = db_getAddressChartMaxMoves();
+        if ($max <= 0) { return 0; }
+        $t = mongo_getAddressMovesTimeAtOffset($address, $max);
+        return is_null($t) ? 0 : (int)$t;
+    }
+
     function db_isMarkedSlow($key){
         return mongo_getSlowMark($key, db_getSlowMarkTtlMs());
     }

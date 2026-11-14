@@ -31,6 +31,14 @@
     if ($is_valid_rid || ui_checkMagicNumber($mn)){
         $to = time();
         $from = 0;
+        if (!is_null($address)){
+            /* Bound the aggregation to the most recent address_chart_max_moves
+               movements. An address with millions of them cannot be charted in
+               full inside any sane web budget -- 4.3 million measured at about
+               26 s even with the covering index -- and answering 503 gave the
+               reader nothing at all. A bounded window is a real chart. */
+            $from = db_getAddressChartFromTime($address);
+        }
 
         /* A cast cannot throw, so the try/catch this replaced caught nothing -- and
            (int) of a missing parameter is 0, which would have asked the server for a
@@ -38,7 +46,10 @@
         $chartGranularity = ui_ClampChartGranularity($gp);
 
         if (!is_null($address)){
-            $slow_key = "AMOVESCHART:".$address.":".$chartGranularity;
+            /* The window is part of the key: a bounded request is a different
+               piece of work from an unbounded one, and must not inherit the
+               other's verdict. */
+            $slow_key = "AMOVESCHART:".$address.":".$chartGranularity.":".$from;
             if (db_isMarkedSlow($slow_key)){
                 /* Already known, recently, to be beyond the budget. Answer now
                    rather than spending the budget again for the same answer. */

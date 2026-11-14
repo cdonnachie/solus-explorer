@@ -3021,6 +3021,40 @@ use Decimal\Decimal;
         $cursor = $dbm->executeCommand($settings['db_name'], $dbc);
         return $cursor->toArray();
     }
+    /* The move_time_sec of this address's $skip-th most recent movement, or null
+     * when it has no more than $skip of them.
+     *
+     * This is how the movement chart bounds its own work. Capping by elapsed
+     * time instead -- "chart the last 180 days" -- bounds nothing: an address
+     * can take four million movements inside a fortnight, as the TradeOgre
+     * consolidation did, and a fixed window would still have to aggregate all
+     * of them. Capping by movement count holds whatever shape the history has.
+     *
+     * The cost is one index walk of $skip entries and no document reads:
+     * address_asc_time_desc_amounts leads on address then move_time_sec
+     * descending, which is both the filter and the sort, and move_time_sec is
+     * in the key so the projection is covered. Measured on Avian at roughly
+     * 0.000035 ms per entry, i.e. about 10 ms at a cap of 250,000 -- and less
+     * than that for any address that has fewer, because the walk simply runs
+     * out and returns nothing.
+     */
+    function mongo_getAddressMovesTimeAtOffset($address, $skip){
+        $skip = (int)$skip;
+        if ($skip < 1) { return null; }
+        $query = new MongoDB\Driver\Query(
+            ['address' => $address],
+            mongo_webTimeLimit([
+                'sort'       => ['move_time_sec' => -1],
+                'skip'       => $skip,
+                'limit'      => 1,
+                'projection' => ['move_time_sec' => 1, '_id' => 0],
+            ])
+        );
+        $r = mongo_execDbQuery($query, "ADDRESSMOVES")->toArray();
+        if (count($r) == 0 || !isset($r[0]->move_time_sec)) { return null; }
+        return (int)$r[0]->move_time_sec;
+    }
+
     function mongo_getAddressMovesAggregatesByGranularity($address, $from_time, $to_time, $granularity_sec = 3600, $including_to_time = true, $time_limit_ms = 0){
         global $dbm;
         global $settings;
