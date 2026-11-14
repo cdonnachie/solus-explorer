@@ -276,6 +276,49 @@
         $minersTableRowsHeight = $minersTableRows * 27.11;
         $minersTableHeightStyle = $minersTableRows > 0 ? "style=\"min-height:".($minersTableConstantHeight+$minersTableRowsHeight)."px;\"" : "";
       ?>
+      <?php
+        /* Multi-algorithm chains only. ui_CreateMiningCache() leaves pow_algos empty for
+           every chain that does not configure settings["pow_algos"], and the isset()
+           also covers a cache document written before this field existed -- that one
+           rebuilds within two minutes, and until it does the card is simply absent. */
+        $pow_algos = isset($data->pow_algos) ? (array)$data->pow_algos : array();
+        if (count($pow_algos) > 0) :
+      ?>
+      <!--Section: Algorithm split-->
+      <section>
+        <div class="row">
+          <div class="col-md-12 mb-4">
+            <div class="card">
+              <div class="card-header card-header primary-color card-header-text  py-2 text-left">
+                <span class="h6 h6-responsive "><i class="fas fa-cogs mr-1" aria-hidden="true"></i> Algorithm Split (24H)</span>
+              </div>
+              <div class="card-body table-responsive text-nowrap col-12">
+                <table class="table table-hover table-striped table-bordered table-sm mb-0" cellspacing="0" width="100%">
+                  <thead>
+                    <tr class="table-secondary text-center">
+                      <th class="th-sm">Algorithm</th>
+                      <th class="th-sm">Blocks</th>
+                      <th class="th-sm">Share</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <?php foreach ($pow_algos as $pa) : if (!is_object($pa)) { continue; } ?>
+                    <tr class="text-center">
+                      <td class="font-weight-bold"><?php echo htmlspecialchars($pa->name, ENT_QUOTES, "UTF-8"); ?></td>
+                      <td><?php echo number_format((int)$pa->blocks); ?></td>
+                      <td><?php echo number_format((float)$pa->percent, 1); ?>%</td>
+                    </tr>
+                  <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!--/Section: Algorithm split-->
+      <?php endif; ?>
+
       <section>
         <div class="row">
           <div class="col-md-12 mb-4">

@@ -947,6 +947,59 @@ use WebSocket\Exception;
         return (string)(((int)$block_version & (1 << $bit)) != 0 ? $era["algos"][1] : $era["algos"][0]);
     }
 
+    /* The algorithm names of the era a timestamp falls in, in the order the operator
+       listed them, so a split rendered from them keeps a stable column order instead
+       of reshuffling every time the counts cross over. Empty when unconfigured. */
+    function ui_GetPowAlgoNames($at_time = null) {
+        global $settings;
+        if (!isset($settings["pow_algos"]["eras"]) || !is_array($settings["pow_algos"]["eras"])) { return array(); }
+        if (is_null($at_time)) { $at_time = time(); }
+        $era = null;
+        foreach ($settings["pow_algos"]["eras"] as $candidate) {
+            if (!is_array($candidate) || !isset($candidate["algos"]) || !is_array($candidate["algos"])) { continue; }
+            $from = isset($candidate["from_time"]) ? (int)$candidate["from_time"] : 0;
+            if ((int)$at_time < $from) { continue; }
+            if (is_null($era) || $from >= $era["from"]) {
+                $era = array("from" => $from, "algos" => array_values($candidate["algos"]));
+            }
+        }
+        return is_null($era) ? array() : $era["algos"];
+    }
+
+    /* Tally of blocks per algorithm -> rows of {name, blocks, percent}.
+     *
+     * Rows come out in the order the operator listed the algorithms, so they keep
+     * their place between refreshes instead of swapping every time two roughly even
+     * algorithms cross over. A configured algorithm that found nothing is kept at
+     * zero deliberately: a stalled algorithm is worth seeing, and dropping its row
+     * would make the chain look like it only ever had one.
+     *
+     * Returns an empty array when nothing was counted, which is every chain that does
+     * not configure settings["pow_algos"] -- the caller then renders nothing at all.
+     */
+    function ui_BuildPowAlgoSplit($algo_blocks, $at_time = null) {
+        $res = array();
+        if (!is_array($algo_blocks)) { return $res; }
+        $total = array_sum($algo_blocks);
+        if ($total <= 0) { return $res; }
+
+        $ordered = ui_GetPowAlgoNames($at_time);
+        /* Anything counted but not configured still gets a row. It should not happen,
+           but losing blocks out of a percentage silently is worse than an odd label. */
+        foreach (array_keys($algo_blocks) as $seen){
+            if (!in_array($seen, $ordered, true)) { array_push($ordered, $seen); }
+        }
+        foreach ($ordered as $name){
+            $n_blk = array_key_exists($name, $algo_blocks) ? (int)$algo_blocks[$name] : 0;
+            $row = new stdClass();
+            $row->name    = (string)$name;
+            $row->blocks  = $n_blk;
+            $row->percent = round(100 * $n_blk / $total, 1);
+            array_push($res, $row);
+        }
+        return $res;
+    }
+
     /* The algo as a badge, or "" when the chain does not configure one. One renderer
        so the blocks list and the block page cannot drift, and so the escaping of the
        operator-supplied algo name happens in exactly one place. */
@@ -4187,6 +4240,7 @@ use WebSocket\Exception;
 
             $cache->total = new stdClass();
             $cache->total->blocks = 0;
+            $cache->pow_algos = array();   // multi-algo chains only; see settings["pow_algos"]
             $cache->total->pow_reward = splitFloat(@cmdec(0), $precision, $precision);
             $cache->total->block_reward = splitFloat(@cmdec(0), $precision, $precision);
 
@@ -4221,6 +4275,7 @@ use WebSocket\Exception;
                 $blocks_reward_pow = @cdec(0);
                 //$tags = array(); // temp associative array "address" => { "tags => ['string'], "alias" => 'string'} ?
                 $miners = array(); // associative array "address =>{ "mined_blocks"=>int, "mined_coins"=>dec, tags => ['string'], "alias" => 'string'}
+                $algo_blocks = array(); // "algorithm name" => blocks mined with it in the window
                 $reward_per_block = new stdClass();
                 $reward_per_block->pow = array();
                 $reward_per_block->pow_blocks = 0;
@@ -4229,6 +4284,17 @@ use WebSocket\Exception;
                 //$reward_per_block->labels = array();
                 $champions = array(); // array of mining champions {"address" => amount}
                 foreach ($blocks as $n=>$block){
+                    /* Counted before anything that can `continue`, and for every block
+                       regardless of type: the split is of the chain's last 24 h, not of
+                       the blocks that happen to have a resolvable PoW winner. */
+                    $b_algo = ui_GetBlockPowAlgo(
+                        isset($block->block_version)  ? $block->block_version  : null,
+                        isset($block->block_time_sec) ? $block->block_time_sec : null);
+                    if (!is_null($b_algo)) {
+                        if (!array_key_exists($b_algo, $algo_blocks)) { $algo_blocks[$b_algo] = 0; }
+                        $algo_blocks[$b_algo]++;
+                    }
+
                     $blocks_reward_total += @cdec($block->block_reward);
                     if($block->type == 'PoW'){ 
                         $reward_per_block->pow_blocks += 1;
@@ -4273,6 +4339,8 @@ use WebSocket\Exception;
                 $cache->reward_per_block = $reward_per_block;
                 $cache->total->blocks_reward = splitFloat(@cmdec($blocks_reward_total), $precision, $precision);
                 $cache->total->pow_reward = splitFloat(@cmdec($blocks_reward_pow), $precision, $precision);
+
+                $cache->pow_algos = ui_BuildPowAlgoSplit($algo_blocks, $etime);
 
                 // average block reward
                 if ($reward_per_block->pow_blocks > 0){

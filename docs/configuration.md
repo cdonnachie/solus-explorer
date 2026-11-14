@@ -60,7 +60,11 @@ timeouts, and the hashrate always comes from `getnetworkhashps`.
 
 Optional, and absent from all three templates. Without it no algorithm is shown
 anywhere, which is what a single-algorithm chain wants. With it, the blocks list gains
-a badge beside each block hash and the block page gains an **Algorithm** row.
+a badge beside each block hash, the block page gains an **Algorithm** row, and the
+mining page gains an **Algorithm Split (24H)** card. The split is counted inside the
+mining cache's existing pass over the last 24 hours of blocks, so it costs no extra
+query; a configured algorithm that found no blocks in the window keeps its row at zero
+rather than disappearing, because an algorithm that has stalled is worth seeing.
 
 ```php
 "pow_algos" => [
