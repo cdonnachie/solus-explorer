@@ -146,7 +146,12 @@ the proxy address.
 5. Set `operator_name`, `operator_url` and optionally `operator_logo` to show who
    runs the explorer. `is_oem => true` removes the Solus Explorer name from the meta
    keywords. The footer text is whatever `copyright_message` says.
-6. `themes/_default.png` shows the default skin for comparison.
+6. Fill in `about_operator`, `operator_contacts` and `about_status` for the About
+   page: who you are, how to reach you, and how long you intend to run the
+   explorer. The feature list there follows `show_pages` and the chain flags on
+   its own, so there is nothing to edit for that. See
+   [The About page](configuration.md#the-about-page).
+7. `themes/_default.png` shows the default skin for comparison.
 
 ## 4. Ads, consent and analytics
 
