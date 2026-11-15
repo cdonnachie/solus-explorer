@@ -420,7 +420,6 @@
                       <?php endif; ?>
                       </tbody>
                     </table>
-                    <p class="small grey-text mt-2 mb-0">Pools are matched on the miner tag in the coinbase script. Name them in the admin console under Labels.</p>
                   </div>
                 </div>
               </div>
