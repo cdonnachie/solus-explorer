@@ -32,6 +32,13 @@ use Decimal\Decimal;
         } else {
             print("  Collection BLOCKS already exists \n");
         }
+            // POOLS -- mining pool labels, written only by the admin Labels page
+        if (!array_key_exists("POOLS", $cols)) {
+            mongo_createPoolsCollection($dbm, $db_name, "POOLS");
+        } else {
+            print("  Collection POOLS already exists 
+");
+        }
             // ADDRESSES
         if (!array_key_exists("ADDRESSES", $cols)) {
             mongo_createAddressesCollection($dbm, $db_name, "ADDRESSES");
@@ -888,6 +895,26 @@ use Decimal\Decimal;
             die();
         }
 
+    }
+    /* No index beyond _id: the collection holds one document per named pool, is read
+       whole on the pages that resolve a tag, and is written only from the admin page.
+       An existing deployment that never runs the initialiser is fine -- MongoDB
+       creates the collection on the first write, and a read of a missing one is
+       empty rather than an error. */
+    function mongo_createPoolsCollection($dbm, $db_name, $col){
+        $cmd = array();
+        $cmd["create"] = (string)$col;
+        $dbc = new MongoDB\Driver\Command($cmd);
+        $res = $dbm->executeCommand($db_name, $dbc);
+        $ec = $res->toArray()[0];
+        if ($ec->ok == 1) {
+            print("  Collection " . $col . " created 
+");
+        } else {
+            print("  Collection " . $col . " creation failed 
+");
+            die();
+        }
     }
     function mongo_createAddressGroupCollection($dbm, $db_name, $col){
         global $settings;
@@ -2780,6 +2807,39 @@ use Decimal\Decimal;
         $q = new MongoDB\Driver\Query(['tags' => ['$exists' => true]], mongo_webTimeLimit([
             'projection' => ['tags' => 1, 'address_count' => 1, 'balance' => 1], 'limit' => $limit]));
         return mongo_execDbQuery($q, "ADDRESSGROUPS")->toArray();
+    }
+
+    // --- Mining pool labels (admin Labels page) ---
+    /* POOLS is tiny -- one document per pool an operator has named -- so it is read
+       whole and matched in PHP. _id is the match pattern itself, already lowercased,
+       which makes the pattern unique for free and the upsert a plain _id write. */
+    function mongo_getPools(){
+        $q = new MongoDB\Driver\Query([], mongo_webTimeLimit(['sort' => ['_id' => 1], 'limit' => 500]));
+        return mongo_execDbQuery($q, "POOLS")->toArray();
+    }
+    function mongo_setPool(string $match, string $name) : bool {
+        global $dbm, $settings;
+        $bulk = new MongoDB\Driver\BulkWrite();
+        $bulk->update(['_id' => $match], ['$set' => ['name' => $name, 'updated_sec' => time()]], ['upsert' => true]);
+        $r = $dbm->executeBulkWrite($settings['db_name'].".POOLS", $bulk);
+        return ($r->getMatchedCount() + $r->getUpsertedCount()) >= 1;
+    }
+    function mongo_deletePool(string $match) : bool {
+        global $dbm, $settings;
+        $bulk = new MongoDB\Driver\BulkWrite();
+        $bulk->delete(['_id' => $match], ['limit' => 1]);
+        return $dbm->executeBulkWrite($settings['db_name'].".POOLS", $bulk)->getDeletedCount() === 1;
+    }
+    /* The coinbase tags of the most recent blocks, so the admin page can offer what
+       this chain actually produces instead of asking the operator to guess. Sorted
+       by block_ix, which is indexed, and projected to the one field, so it stays a
+       covered-ish scan of the tip rather than a collection walk. */
+    function mongo_getRecentCoinbaseTags(int $blocks){
+        $q = new MongoDB\Driver\Query(
+            ['coinbase_tag' => ['$type' => 'string']],
+            mongo_webTimeLimit(['sort' => ['block_ix' => -1], 'limit' => $blocks,
+                                'projection' => ['coinbase_tag' => 1, '_id' => 0]]));
+        return mongo_execDbQuery($q, "BLOCKS")->toArray();
     }
 
     function mongo_getAddressGroupByAddress($address){ // from ADDRESSGROUPS

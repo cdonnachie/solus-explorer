@@ -150,7 +150,7 @@ Conventions, suggested by the page but not enforced:
 
 | Prefix | Meaning | Put it on |
 |---|---|---|
-| `#` | mining pool, e.g. `#2Miners` | the payout address alias; a pool's address can sit inside an exchange's group, so a group tag would label the exchange's other addresses too |
+| `#` | mining pool, e.g. `#2Miners` | the payout address alias; a pool's address can sit inside an exchange's group, so a group tag would label the exchange's other addresses too. A pool that pays to a fresh address every block has no address to label — name it under **Mining pools** below instead |
 | `@` | exchange, e.g. `@Binance` | the group, as a tag; one exchange often owns several groups, tag each of them |
 
 The mining page names a block winner by its alias first, then by its group's first tag.
@@ -184,9 +184,63 @@ Known limits:
   list after a deep reorg.
 * A tag edit made at the moment the loader joins that group into another can be lost.
   The page reads the record again after saving, so a lost edit is visible.
-* Mining charts and the overview are cached; label changes show there after the next
-  metrics run.
+* Mining charts and the overview are cached; alias and tag changes show there after
+  the next metrics run. Pool names are not cached — see **Mining pools** below.
 * No edit history is kept.
+
+### Mining pools
+
+A pool that pays to a fresh address every block cannot be labelled by address. What it
+does leave behind is the miner tag in the coinbase script, which the loader keeps on
+every block it indexes as `BLOCKS.coinbase_tag`. `/admin-console/labels/`, under
+**Mining pools**, maps a piece of that tag to a name:
+
+| Field | Meaning |
+|---|---|
+| Text in the coinbase tag | 2 to 64 characters, matched case-insensitively **anywhere** in the tag. Stored lower-cased |
+| Pool name | the badge the explorer shows; the same rules as an alias — 1 to 32 characters, no `< > " '` or control characters |
+
+**Match the stable part of the tag, not a whole tag.** A tag arrives with the
+extranonce around it and the extranonce changes every block, so `/avian-sv2/` matches
+every block from that pool while `-R/avian-sv2/yyz/1054` matches one. The admin page's
+**Tags with no pool name** list shows the tags from the last 2,000 blocks that nothing
+matches, commonest first, so the list to work through is the real one rather than a
+guess; picking one fills the form with the whole tag to trim.
+
+Where two patterns both match a tag, **the longer one wins**. So `/avian-sv2/yyz/` can
+name one site of a pool that `/avian-sv2/` names generally, and the result does not
+depend on the order the two were added — there is no priority to maintain.
+
+Pools appear on `/mining/` as *Blocks by Pool (24H)* with a share chart, as a column in
+the *Top Miners* table, as the *Pool* column on `/blocks/`, and as *Mined by* on each
+block page. A tag no pattern matches is shown raw and muted, with the whole tag on
+hover — which is how an operator spots what is left to name. A block with no tag shows
+a dash, and untagged blocks are counted as their own row rather than dropped, so the
+shares always add up.
+
+**Resolution happens when a page is drawn, not when the loader runs.** The cache stores
+raw tags only, so a name added or corrected here shows on the next page view. The
+*counts* behind the pool table still come from the mining cache and move with it.
+
+At most 200 pools. The collection is small and read whole once per request, so the
+`Pool` column costs one query however long the page is. No index is needed, and no
+migration: `POOLS` is created on the first pool you name. There is nothing to backfill
+either — the names are applied to whatever tags the blocks already carry.
+
+The same edits in `mongosh`, remembering that `_id` must be lower case and that the
+page is the only thing enforcing the rules above:
+
+```js
+db.POOLS.updateOne({ _id: "/avian-sv2/" },
+                   { $set: { name: "Avian SV2", updated_sec: Math.floor(Date.now()/1000) } },
+                   { upsert: true })
+db.POOLS.deleteOne({ _id: "/avian-sv2/" })
+db.POOLS.find().sort({ _id: 1 })
+```
+
+Blocks indexed before the loader began keeping the tag carry none, and a pool cannot be
+attributed on those. `script/refreshCoinbaseTags.php` fills them in from the daemon
+without a reindex — see **Refreshing coinbase tags** below.
 
 ## 3. Logs and metrics
 
@@ -329,8 +383,10 @@ Points worth knowing before a long run:
 - **Only `coinbase_tag` is written**, and only on blocks whose recomputed value
   differs, so a second run over an up-to-date range writes nothing.
 - **The mining page reads a cache** that `loaderMongo-blocks.php` rebuilds at the
-  end of every run, so the next cron pass publishes the new tags with no further
-  action.
+  end of every run, so a tag recovered here reaches the pool table on the next cron
+  pass. The blocks list and the block page read the block directly and show it at
+  once. Naming the pool behind a recovered tag is a separate step — see
+  **Mining pools** above.
 
 Expect roughly the RPC round-trip time per block: on a local node a few hundred
 blocks a second, so a multi-million-block chain is hours, not minutes. Use

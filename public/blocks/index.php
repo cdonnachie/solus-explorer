@@ -251,6 +251,7 @@
                       <th class="th-sm">Timestamp <?php if (isset($settings["timezone"])) { echo "[".$settings["timezone"]."]";} ?></th>
                       <th class="th-sm">Height</th>
                       <th class="th-sm">Block Hash</th>
+                      <th class="th-sm">Pool</th>
                       <th class="th-sm">Confirmations</th>
                       <th class="th-sm">Size (kB)</th>
                       <th class="th-sm">TXs</th>
@@ -291,7 +292,7 @@
             },
             "deferRender": true,
             "columnDefs": [ 
-            {"targets": 6, "className": "text-right"},
+            {"targets": 7, "className": "text-right"},
             {"targets": "_all", "className": " text-center"}
             ]
           });

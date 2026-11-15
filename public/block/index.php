@@ -280,6 +280,20 @@
                     <td class="font-weight-bold text-right p-1"><?php echo htmlspecialchars($pow_algo, ENT_QUOTES, "UTF-8"); ?></td>
                   </tr>
                   <?php endif; ?>
+                  <?php
+                    /* Only when the block carries a coinbase tag. A PoS block has
+                       none, and nor has a block indexed before the loader began
+                       keeping it, so the row is absent rather than blank. The name
+                       comes from the admin Labels page; an unnamed tag shows raw,
+                       which is how an operator finds the pools left to name. */
+                    $cb_tag = isset($br->coinbase_tag) ? (string)$br->coinbase_tag : "";
+                    if ($cb_tag !== "") :
+                  ?>
+                  <tr>
+                    <td class="primary-text p-1">Mined by</td>
+                    <td class="font-weight-bold text-right p-1"><?php echo ui_poolCell($cb_tag); ?></td>
+                  </tr>
+                  <?php endif; ?>
                   <?php 
                     if ($br->type == "PoS"){
                       echo '              <tr>

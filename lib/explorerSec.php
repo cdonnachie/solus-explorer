@@ -295,7 +295,20 @@ function sec_requireAdmin()
 function sec_sameOrigin() : bool
 {
     global $settings;
-    $own = parse_url((string)($settings['explorer_address'] ?? ''));
+    /* getHostAddress(), not a raw read of explorer_address. All three settings
+       templates ship that key as "", documented as "derives it from the request",
+       and a raw read then leaves $own with no host -- so this returned false for
+       every request, and on a deployment that kept the shipped default no admin
+       could log in and no label could be saved. getHostAddress() applies the same
+       derivation the rest of the app uses, X-Forwarded-Proto and X-Forwarded-Host
+       included, so a proxied deployment is compared against the address the browser
+       really used. This only ever turns a false into a true for a request that is
+       genuinely same-origin; a cross-origin request still fails the comparison
+       below. Guarded because explorerSec.php is included without explorerUi.php in
+       places, and there the previous behaviour stands. */
+    $own = parse_url(function_exists('getHostAddress')
+        ? (string)getHostAddress()
+        : (string)($settings['explorer_address'] ?? ''));
     $src = parse_url((string)($_SERVER['HTTP_ORIGIN'] ?? ($_SERVER['HTTP_REFERER'] ?? '')));
     if (empty($own['host']) || empty($src['host'])) return false;
     $port = function($u){ return $u['port'] ?? ((($u['scheme'] ?? '') === 'http') ? 80 : 443); };

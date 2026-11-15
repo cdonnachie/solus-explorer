@@ -328,6 +328,109 @@
       <!--/Section: Algorithm split-->
       <?php endif; ?>
 
+      <?php
+        /* Pool attribution for the last 24 h. The cache holds raw coinbase tags and
+           nothing else: the names are applied here, at render, so renaming a pool on
+           the Labels page shows on the next page view rather than the next loader
+           run. An empty list means a cache document written before this field
+           existed -- it rebuilds within two minutes, and until then the card is
+           simply absent, the same way the algorithm card behaves. */
+        $pool_rows  = ui_mergePoolRows(isset($data->pools) ? $data->pools : array());
+        $pool_total = 0;
+        foreach ($pool_rows as $pr) { $pool_total += $pr->blocks; }
+        if ($pool_total > 0) :
+          /* Ten slices and a remainder. Past that the legend is longer than the
+             chart and tells the reader less than the table beside it. */
+          $pc_labels = array(); $pc_values = array(); $pc_other = 0; $pc_i = 0;
+          foreach ($pool_rows as $pr) {
+            if ($pc_i < 10) {
+              $pc_labels[] = ($pr->label === "") ? "Not tagged" : $pr->label;
+              $pc_values[] = $pr->blocks;
+            } else { $pc_other += $pr->blocks; }
+            $pc_i++;
+          }
+          if ($pc_other > 0) { $pc_labels[] = "Other"; $pc_values[] = $pc_other; }
+
+          /* The table is capped for the same reason, and it matters more here. Every
+             tag no pattern matches stands as its own row, and a pool whose tag ends
+             in a per-block extranonce produces one row per block -- so on a chain
+             where nothing has been named yet this table would be as long as the
+             window, roughly a row a minute. The remainder collapses into one row
+             that says how many tags it covers. Naming the pools is what shortens
+             the table, and the admin Labels page lists the tags to name. */
+          $PL_MAX  = 25;
+          $pt_rows = array_slice($pool_rows, 0, $PL_MAX);
+          $pt_rest = array_slice($pool_rows, $PL_MAX);
+          $pt_rest_blocks = 0; $pt_rest_coins = @cdec(0);
+          foreach ($pt_rest as $pr) { $pt_rest_blocks += $pr->blocks; $pt_rest_coins += $pr->coins; }
+      ?>
+      <!--Section: Blocks by pool-->
+      <section>
+        <div class="row">
+          <div class="col-md-12 mb-4">
+            <div class="card">
+              <div class="card-header card-header primary-color card-header-text  py-2 text-left">
+                <span class="h6 h6-responsive "><i class="fas fa-industry mr-1" aria-hidden="true"></i> Blocks by Pool (24H)</span>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-12 col-lg-5 mb-3 mb-lg-0">
+                    <canvas id="dcPoolDistr" height="300px"></canvas>
+                  </div>
+                  <div class="col-12 col-lg-7 table-responsive text-nowrap">
+                    <table class="table table-hover table-striped table-bordered table-sm mb-0" cellspacing="0" width="100%">
+                      <thead>
+                        <tr class="table-secondary text-center">
+                          <th class="th-sm text-left">Pool</th>
+                          <th class="th-sm">Blocks</th>
+                          <th class="th-sm">Share</th>
+                          <th class="th-sm">Coins (<?php echo h($settings["coin_symbol"]); ?>)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                      <?php foreach ($pt_rows as $pr) :
+                              $pr_coins = splitFloat(@cmdec($pr->coins), $precision, $precision); ?>
+                        <tr class="text-center">
+                          <td class="text-left"><?php
+                                /* A named pool gets the badge; an unnamed tag shows
+                                   raw with the whole of it on hover, which is what
+                                   tells the operator what to add on the Labels page. */
+                                if ($pr->named) {
+                                  echo "<span class='badge badge-info' title='".h(implode(", ", $pr->tags))."'>".h($pr->label)."</span>";
+                                } else if ($pr->label === "") {
+                                  echo "<span class='grey-text'>Not tagged</span>";
+                                } else {
+                                  echo "<span class='grey-text small' title='".h($pr->tag)."'>".h($pr->label)."</span>";
+                                }
+                              ?></td>
+                          <td><?php echo number_format($pr->blocks); ?></td>
+                          <td><?php echo number_format(100 * $pr->blocks / $pool_total, 1); ?>%</td>
+                          <td class="text-right"><?php echo $pr_coins->whole.".<small>".$pr_coins->fraction."</small>"; ?></td>
+                        </tr>
+                      <?php endforeach; ?>
+                      <?php if (count($pt_rest) > 0) :
+                              $pt_rest_split = splitFloat(@cmdec($pt_rest_coins), $precision, $precision); ?>
+                        <tr class="text-center">
+                          <td class="text-left"><span class="grey-text">Other<?php
+                                echo " &mdash; ".number_format(count($pt_rest))." more tag".(count($pt_rest) == 1 ? "" : "s"); ?></span></td>
+                          <td><?php echo number_format($pt_rest_blocks); ?></td>
+                          <td><?php echo number_format(100 * $pt_rest_blocks / $pool_total, 1); ?>%</td>
+                          <td class="text-right"><?php echo $pt_rest_split->whole.".<small>".$pt_rest_split->fraction."</small>"; ?></td>
+                        </tr>
+                      <?php endif; ?>
+                      </tbody>
+                    </table>
+                    <p class="small grey-text mt-2 mb-0">Pools are matched on the miner tag in the coinbase script. Name them in the admin console under Labels.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!--/Section: Blocks by pool-->
+      <?php endif; ?>
+
       <section>
         <div class="row">
           <div class="col-md-12 mb-4">
@@ -584,6 +687,37 @@
       },
     });
 
+    <?php if ($pool_total > 0) : ?>
+    // blocks by pool (doughnut)
+    const ctxPool = document.getElementById('dcPoolDistr').getContext('2d');
+    const poolChart = new Chart(ctxPool, {
+      type: 'doughnut',
+      data: {
+        labels: <?php echo json_encode($pc_labels, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+        datasets: [{
+          data: <?php echo json_encode($pc_values); ?>,
+          backgroundColor: [<?php echo getChartColors(count($pc_labels),1); ?>],
+          hoverBorderWidth: 1,
+          hoverBorderColor: [<?php echo getChartColors(count($pc_labels),1); ?>],
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 0 },
+        legend: { display: true, position: 'bottom' },
+        tooltips: {
+          callbacks: {
+            label: function(tooltipItem, data) {
+              var i = tooltipItem.index;
+              return data.labels[i] + ': ' + data.datasets[0].data[i] + ' blocks (' + ( 100*data.datasets[0].data[i]/<?php echo (int)$pool_total; ?> ).toFixed(1) + '%)';
+            }
+          }
+        }
+      }
+    });
+    <?php endif; ?>
+
     // top miners chart (doughnut)
     const ctxDn = document.getElementById('dcBlockDistr').getContext('2d');
     const dnChart = new Chart(ctxDn, {
@@ -632,20 +766,27 @@
       "deferRender": true,
       "columns":[
         {"title": "Miner", "className": "text-left"},
+        {"title": "Pool", "className": "text-left"},
         {"title": "Found Blocks"},
         {"title": "Earned Coins(<?php echo $settings['coin_symbol'];?>)"}
       ],
       "columnDefs": [ 
-        {"targets": [1,2], "className": "th-sm text-right"},
+        {"targets": [2,3], "className": "th-sm text-right"},
         {"targets": "_all", "className": "blocklist-hash text-left"}
       ],
-      "order": [[ 2, "desc" ]],
+      "order": [[ 3, "desc" ]],
       "data": [
         <?php 
           foreach ($data->miners as $addr=>$miner_info) {
             if ($addr != "Other"){
               $cell = "<a class='txlist-txid text-primary' href='".h($settings["explorer_address"]."/address/?address=".$addr)."'>".h($addr)."</a>".ui_labelBadge($miner_info->alias ?? '', 'badge-info ml-1');
-              echo json_encode([$cell, (int)$miner_info->mined_blocks, $miner_info->mined_coins->whole.".<small>".$miner_info->mined_coins->fraction."</small>"], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT).",";
+              /* The tag that mined most of this address's blocks. An address paid
+                 by one pool has one; an address paid by several shows the dominant
+                 one, which is the honest summary for a single cell. Absent on a
+                 cache document written before the field existed, and the cell is
+                 then a dash, like any untagged block. */
+              $pool_cell = ui_poolCell(ui_dominantPoolTag($miner_info->pool_tags ?? array()));
+              echo json_encode([$cell, $pool_cell, (int)$miner_info->mined_blocks, $miner_info->mined_coins->whole.".<small>".$miner_info->mined_coins->fraction."</small>"], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT).",";
             }
           }
         ?>

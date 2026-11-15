@@ -393,6 +393,10 @@ use Decimal\Decimal;
     function db_getLabelIndexes() : array { return mongo_getLabelIndexes(); }
     function db_getLabelAliases(int $limit) { return mongo_getLabelAliases($limit); }
     function db_getLabelGroups(int $limit) { return mongo_getLabelGroups($limit); }
+    function db_getPools() { return mongo_getPools(); }
+    function db_setPool(string $match, string $name) : bool { return mongo_setPool($match, $name); }
+    function db_deletePool(string $match) : bool { return mongo_deletePool($match); }
+    function db_getRecentCoinbaseTags(int $blocks) { return mongo_getRecentCoinbaseTags($blocks); }
     function db_getAddressGroupByAddress($address) // from ADDRESSGROUPS
     {
         global $settings;

@@ -63,6 +63,164 @@ use WebSocket\Exception;
       return function_exists('mb_strtolower') ? mb_strtolower($label, 'UTF-8') : strtolower($label);
   }
 
+  /* --- Mining pool labels ---
+
+     A block carries coinbase_tag: the printable runs the loader lifted out of the
+     coinbase script. By convention that identifies the pool, but it is not a name.
+     It arrives as "/avian-sv2/yyz/" or "pool.rplant.xyz" with extranonce debris
+     around it, and the debris changes from block to block. So an operator maps a
+     substring to a name on the admin Labels page, and every page that shows a pool
+     resolves through here.
+
+     Matching is case-insensitive substring, longest pattern first. Longest-first is
+     what makes the answer independent of insertion order: there is no priority
+     field to maintain, and a pool that must beat another only needs the more
+     specific pattern. Equal-length patterns fall back to comparing the patterns, so
+     the result is deterministic either way. */
+  function ui_poolKey(string $match) : string { return ui_labelKey(trim($match)); }
+
+  // '' when a new match pattern is acceptable, otherwise the message for the admin
+  function ui_poolMatchError(string $match) : string {
+      if ($match === '') { return 'Enter the text to match in the coinbase tag.'; }
+      if (!preg_match('//u', $match)) { return 'The pattern is not valid UTF-8 text.'; }
+      if ($match !== trim($match)) { return 'Remove the spaces at the start or end.'; }
+      if (preg_match('/\p{Cc}/u', $match)) { return 'The pattern cannot contain control characters.'; }
+      /* Two characters is the floor because a one-character pattern matches most of
+         the chain and would quietly relabel every other pool. < > " ' are allowed
+         here, unlike in a label: a coinbase tag can contain them, and every use of
+         a pattern escapes it on the way out. */
+      $n = preg_match_all('/./su', $match);
+      if ($n < 2) { return 'Use at least 2 characters: a single character would match almost every block.'; }
+      if ($n > 64) { return 'Use at most 64 characters.'; }
+      return '';
+  }
+
+  /* Read once per request. The collection holds one document per named pool, so a
+     page that resolves a tag for every row of a table still makes one query. */
+  function ui_getPoolMap() : array {
+      static $map = null;
+      if (!is_null($map)) { return $map; }
+      $map = array();
+      try {
+          foreach (db_getPools() as $p) {
+              $m = isset($p->_id)  ? (string)$p->_id  : '';
+              $n = isset($p->name) ? (string)$p->name : '';
+              if ($m === '' || $n === '') { continue; }
+              $map[] = ['match' => $m, 'name' => $n];
+          }
+      } catch (Throwable $e) {
+          /* A page that shows a pool column is not a page about pools. If the
+             lookup fails, every caller falls back to the raw tag. */
+          $map = array();
+          return $map;
+      }
+      usort($map, function ($a, $b) {
+          $d = strlen($b['match']) - strlen($a['match']);
+          return $d !== 0 ? $d : strcmp($a['match'], $b['match']);
+      });
+      return $map;
+  }
+
+  // The pool this coinbase tag belongs to, or '' when none is mapped.
+  function ui_poolName($tag) : string {
+      $tag = (string)$tag;
+      if ($tag === '') { return ''; }
+      $hay = ui_labelKey($tag);
+      foreach (ui_getPoolMap() as $p) {
+          if (strpos($hay, $p['match']) !== false) { return $p['name']; }
+      }
+      return '';
+  }
+
+  // The pool name, or the raw tag shortened to fit a cell, or '' for a block with
+  // no tag at all. Callers that render HTML want ui_poolCell instead.
+  function ui_poolLabel($tag, int $max = 24) : string {
+      $name = ui_poolName($tag);
+      if ($name !== '') { return $name; }
+      /* ldr_coinbaseTag only ever keeps printable bytes, so this strip changes
+         nothing the loader wrote. It is here because the field is in the database,
+         where an operator or an older tool could have put anything, and the value
+         goes into a title attribute. */
+      $tag = trim(preg_replace('/\p{Cc}/u', '', (string)$tag));
+      if ($tag === '') { return ''; }
+      $chars = preg_split('//u', $tag, -1, PREG_SPLIT_NO_EMPTY);
+      if (is_array($chars) && count($chars) > $max) {
+          return implode('', array_slice($chars, 0, $max)).'...';
+      }
+      return $tag;
+  }
+
+  /* The mining cache's raw-tag rows, merged into the pools they resolve to. This
+     happens at render, not in the loader that writes the cache: resolving earlier
+     would mean a name edited on the Labels page stayed invisible until the next
+     loader run, which is the one thing an operator notices immediately.
+
+     Rows resolving to the same name merge. A tag with no mapping stands alone under
+     its own text -- that is what shows an operator there is still a pool to name --
+     and blocks with no tag at all collect under one row. */
+  function ui_mergePoolRows($rows) : array {
+      $out = array();
+      foreach ((is_array($rows) || is_object($rows)) ? $rows : [] as $r) {
+          if (!is_object($r)) { continue; }
+          $tag   = isset($r->tag) ? (string)$r->tag : '';
+          $name  = ui_poolName($tag);
+          $named = ($name !== '');
+          $key   = $named ? 'n:'.ui_labelKey($name) : 't:'.$tag;
+          if (!isset($out[$key])) {
+              $o = new stdClass();
+              $o->label  = $named ? $name : ui_poolLabel($tag);
+              $o->named  = $named;
+              $o->tag    = $tag;      // one example tag, for the hover
+              $o->tags   = array();   // every tag that merged into this row
+              $o->blocks = 0;
+              $o->coins  = @cdec(0);
+              $out[$key] = $o;
+          }
+          $out[$key]->blocks += isset($r->blocks) ? (int)$r->blocks : 0;
+          if (isset($r->coins_dec)) { $out[$key]->coins += @cdec($r->coins_dec); }
+          if ($tag !== '' && !in_array($tag, $out[$key]->tags, true)) { $out[$key]->tags[] = $tag; }
+      }
+      $out = array_values($out);
+      usort($out, function ($a, $b) { return $b->blocks <=> $a->blocks ?: strcmp($a->label, $b->label); });
+      return $out;
+  }
+
+  /* The pool that mined most of an address's blocks, from the cache's pool_tags list.
+
+     Merged by resolved pool name BEFORE the winner is picked, and that order is the
+     whole point. The cache keys this list by raw tag, and a pool whose tag carries a
+     per-block extranonce contributes one entry of one block each. Reading the list
+     as it stands therefore makes every tag a tie, and "most blocks" degenerates into
+     whichever tag sorts first -- a pool with one block beating a pool with ten.
+     Merging first gives the pools their real weights.
+
+     Blocks with no tag are skipped rather than allowed to win. They are the absence
+     of an identity, not a competitor for it: an address with 30 untagged blocks and
+     20 from one pool is still that pool's payout address, and answering "no tag"
+     would hide the only identification available. The per-block truth is not lost --
+     the blocks table and the block page each show their own block's tag, and the
+     pool table counts untagged blocks as a row of their own. */
+  function ui_dominantPoolTag($pool_tags) : string {
+      foreach (ui_mergePoolRows($pool_tags) as $r) {
+          if ($r->tag !== '') { return $r->tag; }
+      }
+      return '';
+  }
+
+  /* One cell of pool attribution, shared by the blocks table, the block page and
+     both mining tables so the four read alike. A named pool gets a badge; an
+     unnamed tag is shown raw, muted and shortened, with the whole of it on hover --
+     which is also how an operator finds what to add on the Labels page. */
+  function ui_poolCell($tag, string $badge_class = 'badge-info') : string {
+      $tag  = preg_replace('/\p{Cc}/u', '', (string)$tag);   // never into an attribute
+      $name = ui_poolName($tag);
+      if ($name !== '') {
+          return "<span class='badge ".$badge_class."' title='".h($tag)."'>".h($name)."</span>";
+      }
+      if (trim($tag) === '') { return "<span class='grey-text'>&mdash;</span>"; }
+      return "<span class='grey-text small' title='".h($tag)."'>".h(ui_poolLabel($tag))."</span>";
+  }
+
   // Utilities
     function milliseconds() {
         $mt = explode(' ', microtime());
@@ -3900,7 +4058,14 @@ use WebSocket\Exception;
             $protocol   = '';
             $address    = '';
 
-            $protocol = $_SERVER['REQUEST_SCHEME'];
+            /* REQUEST_SCHEME is an Apache/nginx variable. It is absent under PHP's
+               built-in server and under some FastCGI setups, where reading it raised
+               an undefined-index warning and left the scheme empty -- so this
+               returned "://host", which parse_url cannot read as an origin. Fall
+               back to the HTTPS flag, which is what ui_getRootURL already does. */
+            $protocol = isset($_SERVER['REQUEST_SCHEME'])
+                ? $_SERVER['REQUEST_SCHEME']
+                : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
             if (array_key_exists('HTTP_X_FORWARDED_PROTO',$_SERVER)){
                 $protocol = $_SERVER['HTTP_X_FORWARDED_PROTO'];
             }
@@ -4413,6 +4578,7 @@ use WebSocket\Exception;
             $cache->total = new stdClass();
             $cache->total->blocks = 0;
             $cache->pow_algos = array();   // multi-algo chains only; see settings["pow_algos"]
+            $cache->pools = array();       // [{tag, blocks, coins}], newest-24h, unresolved
             $cache->total->pow_reward = splitFloat(@cmdec(0), $precision, $precision);
             $cache->total->block_reward = splitFloat(@cmdec(0), $precision, $precision);
 
@@ -4447,6 +4613,12 @@ use WebSocket\Exception;
                 $blocks_reward_pow = @cdec(0);
                 //$tags = array(); // temp associative array "address" => { "tags => ['string'], "alias" => 'string'} ?
                 $miners = array(); // associative array "address =>{ "mined_blocks"=>int, "mined_coins"=>dec, tags => ['string'], "alias" => 'string'}
+                /* Raw coinbase tags, counted as they come off the chain. The tag is
+                   NOT resolved to a pool name here: the cache is rebuilt by the
+                   loader, so baking names in would leave an edit on the Labels page
+                   invisible until the next run. The mining page resolves at render,
+                   and merges the tags that land on the same pool. */
+                $pool_tags = array(); // "coinbase tag" => { "blocks"=>int, "coins"=>dec }
                 $algo_blocks = array(); // "algorithm name" => blocks mined with it in the window
                 $reward_per_block = new stdClass();
                 $reward_per_block->pow = array();
@@ -4472,6 +4644,22 @@ use WebSocket\Exception;
                         $reward_per_block->pow_blocks += 1;
                         $blocks_reward_pow += @cdec($block->pow_reward);
                         $reward_per_block->pow[$block->block_ix] = @cmdec($block->block_reward);
+
+                        /* Before the `continue`, for the same reason the algo split
+                           is: a pool that pays to an address the loader could not
+                           resolve still mined the block. "" is kept as its own entry
+                           so blocks with no tag show up as unattributed rather than
+                           quietly shrinking the total. */
+                        $ptag = (isset($block->coinbase_tag) && is_string($block->coinbase_tag))
+                              ? $block->coinbase_tag : "";
+                        if (!array_key_exists($ptag, $pool_tags)) {
+                            $pool_tags[$ptag] = new stdClass();
+                            $pool_tags[$ptag]->blocks = 0;
+                            $pool_tags[$ptag]->coins  = @cdec(0);
+                        }
+                        $pool_tags[$ptag]->blocks++;
+                        $pool_tags[$ptag]->coins += @cdec($block->pow_reward);
+
                         if (empty($block->pow_winner)){
                             continue;
                         }
@@ -4490,6 +4678,7 @@ use WebSocket\Exception;
                             $miners[$block->pow_winner]->mined_coins = @cdec($block->pow_reward);
                             $miners[$block->pow_winner]->tags = array();
                             $miners[$block->pow_winner]->alias = "";
+                            $miners[$block->pow_winner]->pool_tags = array();
 
                             $ut->continueTimer('db_getAddressTags()');
                             $grp = db_getAddressTags($block->pow_winner);
@@ -4501,6 +4690,14 @@ use WebSocket\Exception;
                                 $miners[$block->pow_winner]->alias = $grp->address_alias;
                             }                        
                         }
+                        /* Which tags paid this address, and how often. A pool that
+                           reuses one payout address gives one entry; an address that
+                           several pools pay gives several, and the page shows the
+                           one that mined most of the blocks. */
+                        if (!array_key_exists($ptag, $miners[$block->pow_winner]->pool_tags)) {
+                            $miners[$block->pow_winner]->pool_tags[$ptag] = 0;
+                        }
+                        $miners[$block->pow_winner]->pool_tags[$ptag]++;
 
                     } else {
                         $reward_per_block->non_pow_blocks += 1;
@@ -4555,7 +4752,34 @@ use WebSocket\Exception;
                 $ut->createTimer('convertMinedCoins',1);
                 foreach ($cache->miners as $addr => $miner){
                     $cache->miners[$addr]->mined_coins = splitFloat(@cmdec($miner->mined_coins), $precision, $precision);
+                    /* A list, not a map. These keys are coinbase tags, and a tag
+                       like "pool.rplant.xyz" carries dots, which cannot be a field
+                       name in a stored document. Sorted so the page can read the
+                       dominant tag off the front. */
+                    $mt = array();
+                    foreach ($miner->pool_tags as $t => $n) {
+                        $e = new stdClass(); $e->tag = (string)$t; $e->blocks = (int)$n;
+                        $mt[] = $e;
+                    }
+                    usort($mt, function ($a, $b) { return $b->blocks <=> $a->blocks ?: strcmp($a->tag, $b->tag); });
+                    $cache->miners[$addr]->pool_tags = $mt;
                 }
+                /* Same reason: a list keyed by nothing, carrying the tag as a field.
+                   Ordered by blocks so the page's table and chart need no sort. */
+                $pl = array();
+                foreach ($pool_tags as $t => $pt) {
+                    $e = new stdClass();
+                    $e->tag    = (string)$t;
+                    $e->blocks = (int)$pt->blocks;
+                    $e->coins  = splitFloat(@cmdec($pt->coins), $precision, $precision);
+                    /* The split is for display and has been through a float; the
+                       Decimal128 beside it is what anything summing these must
+                       read. See docs/json-contract.md on splitFloat. */
+                    $e->coins_dec = @cmdec($pt->coins);
+                    $pl[] = $e;
+                }
+                usort($pl, function ($a, $b) { return $b->blocks <=> $a->blocks ?: strcmp($a->tag, $b->tag); });
+                $cache->pools = $pl;
                 $ut->stopTimer('convertMinedCoins');
             }
 

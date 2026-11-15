@@ -132,7 +132,39 @@
         <div id="lblList"><p class="lbl-hint">Loading…</p></div>
       </div>
     </div>
-    <p class="lbl-hint mb-4">Mining charts and the overview are cached. Label changes appear there after the next metrics run.</p>
+    <h5 class="pt-2 pb-0">Mining pools</h5>
+    <p class="lbl-hint mb-3">A pool is named by the miner tag in its coinbase script, not by an address. That is the only way to attribute a pool that pays to a fresh address every block. Matching is case-insensitive and looks anywhere in the tag; where two patterns both match, the longer one wins, so order does not matter.</p>
+
+    <div class="card col-12 px-0 mb-4">
+      <div class="card-header primary-color card-header-text py-2 d-flex justify-content-between align-items-center"><span class="h6 h6-responsive mb-0"><i class="fas fa-industry" aria-hidden="true"></i> POOL NAMES</span><small class="text-white-50 lbl-num" id="plCount"></small></div>
+      <div class="card-body">
+        <form id="plForm" class="form-row" autocomplete="off">
+          <div class="col-12 col-md-5">
+            <label class="sr-only" for="plMatch">Text in the coinbase tag</label>
+            <input type="text" id="plMatch" class="form-control lbl-id" placeholder="Text in the coinbase tag" spellcheck="false" maxlength="64">
+          </div>
+          <div class="col-12 col-md-5 mt-2 mt-md-0">
+            <label class="sr-only" for="plName">Pool name</label>
+            <input type="text" id="plName" class="form-control" placeholder="Pool name" spellcheck="false" maxlength="64">
+          </div>
+          <div class="col-12 col-md-auto mt-2 mt-md-0">
+            <button id="plSave" type="submit" class="btn btn-info btn-md m-0">Save</button>
+          </div>
+        </form>
+        <p class="lbl-hint mt-2">Match the stable part of the tag, such as <code>/avian-sv2/</code> or <code>rplant</code>. The extranonce around it changes every block, so a whole tag copied from one block often matches only that block.</p>
+        <p id="plErr" class="alert alert-danger lbl-msg mt-3" hidden></p>
+        <div id="plList" class="mt-3"><p class="lbl-hint">Loading...</p></div>
+      </div>
+    </div>
+
+    <div class="card col-12 px-0 mb-4">
+      <div class="card-header primary-color card-header-text py-2 d-flex justify-content-between align-items-center"><span class="h6 h6-responsive mb-0"><i class="fas fa-question-circle" aria-hidden="true"></i> TAGS WITH NO POOL NAME</span><small class="text-white-50 lbl-num" id="plSeenCount"></small></div>
+      <div class="card-body">
+        <div id="plUnmapped"><p class="lbl-hint">Loading...</p></div>
+      </div>
+    </div>
+
+    <p class="lbl-hint mb-4">Aliases and tags reach the mining charts and the overview on the next metrics run, because those are cached. Pool names are resolved when a page is drawn, so they take effect at once.</p>
   </section>
 
   <script>
@@ -356,7 +388,119 @@
     $("#lblTabTags").on("click", function (e) { e.preventDefault(); setTab("tags"); });
     $("#lblFilter").on("input", renderList);
 
+    // ---- mining pools ----
+    /* Pools are stored as pattern -> name and resolved on the public pages when they
+       draw, so an edit here shows immediately. The pattern is folded to lower case by
+       the server, which is why the list can show it verbatim. */
+    var pools = { pools: [], unmapped: [], scanned: 0, max: 0 }, poolPending = null;
+
+    function checkMatch(v) {
+      if (v === "") return "Enter the text to match in the coinbase tag.";
+      if (v !== v.trim()) return "Remove the spaces at the start or end.";
+      if (/[\u0000-\u001f\u007f-\u009f]/.test(v)) return "The pattern cannot contain control characters.";
+      var n = Array.from(v).length;
+      if (n < 2) return "Use at least 2 characters: a single character would match almost every block.";
+      if (n > 64) return "Use at most 64 characters.";
+      return "";
+    }
+    function poolInput() {
+      var m = $("#plMatch").val(), n = $("#plName").val();
+      var e = m ? checkMatch(m) : "";
+      if (!e && n) { e = check(n); }
+      $("#plMatch").toggleClass("is-invalid", !!(m && checkMatch(m)));
+      $("#plName").toggleClass("is-invalid", !!(n && check(n)));
+      msg("#plErr", e);
+      return !e && !!m && !!n;
+    }
+    function savePool() {
+      if (!poolInput()) { if (!$("#plMatch").val() || !$("#plName").val()) { msg("#plErr", "Fill in both the tag text and the pool name."); } return; }
+      $("#plSave").prop("disabled", true);
+      post({ action: "pool_set", match: $("#plMatch").val(), name: $("#plName").val() }).done(function (res) {
+        if (res.status === "ok") {
+          $("#plMatch, #plName").val("").removeClass("is-invalid");
+          msg("#plErr", "");
+          toast(res.message);
+          refreshPools();
+        } else { msg("#plErr", res.error); }
+      }).fail(function (xhr) { msg("#plErr", failed(xhr)); })
+        .always(function () { $("#plSave").prop("disabled", false); });
+    }
+    function removePool(match) {
+      poolPending = null;
+      post({ action: "pool_delete", match: match }).done(function (res) {
+        if (res.status === "ok") { toast(res.message); refreshPools(); }
+        else { msg("#plErr", res.error); }
+      }).fail(function (xhr) { msg("#plErr", failed(xhr)); });
+    }
+    function editPool(p) {
+      $("#plMatch").val(p.match);
+      $("#plName").val(p.name).trigger("focus");
+      poolInput();
+    }
+    function renderPools() {
+      var body = $("#plList").empty();
+      $("#plCount").text(pools.pools.length + " / " + pools.max);
+      if (!pools.pools.length) {
+        body.append($("<p class='lbl-hint'>").text("No pool is named yet. Blocks show the raw coinbase tag until one matches."));
+        return;
+      }
+      var t = $("<table class='table table-sm mb-0'>"), tb = $("<tbody>");
+      t.append($("<thead>").append($("<tr>").append(
+        $("<th>").text("Pool"), $("<th>").text("Matches tags containing"), $("<th>"))));
+      pools.pools.forEach(function (p) {
+        var act = $("<td class='text-right text-nowrap'>");
+        if (poolPending === p.match) {
+          act.append($("<span class='text-danger small mr-2'>").text("Remove " + p.name + "?"),
+            $("<button type='button' class='btn btn-sm btn-danger m-0 mr-1'>").text("Remove").on("click", function () { removePool(p.match); }),
+            $("<button type='button' class='btn btn-sm btn-light m-0'>").text("Keep").on("click", function () { poolPending = null; renderPools(); }));
+        } else {
+          act.append($("<button type='button' class='btn btn-sm btn-info m-0 mr-1'>").text("Edit").on("click", function () { editPool(p); }),
+            $("<button type='button' class='btn btn-sm btn-link text-danger m-0'>").text("Remove").on("click", function () { poolPending = p.match; renderPools(); }));
+        }
+        tb.append($("<tr>").append(
+          $("<td>").append($("<span class='badge badge-info mb-1'>").text(p.name)),
+          $("<td class='lbl-id'>").text(p.match), act));
+      });
+      body.append($("<div class='table-responsive'>").append(t.append(tb)));
+    }
+    function renderUnmapped() {
+      var body = $("#plUnmapped").empty();
+      $("#plSeenCount").text(pools.unmapped.length ? pools.unmapped.length + " found" : "");
+      if (!pools.unmapped.length) {
+        body.append($("<p class='lbl-hint'>").text(
+          "Every tag on the last " + pools.scanned.toLocaleString("en-US") + " blocks matches a pool above."));
+        return;
+      }
+      body.append($("<p class='lbl-hint mb-2'>").text(
+        "Seen on the last " + pools.scanned.toLocaleString("en-US") + " blocks and matched by nothing above. Pick one to fill the form, then trim it to the part that does not change between blocks."));
+      var t = $("<table class='table table-sm mb-0'>"), tb = $("<tbody>");
+      t.append($("<thead>").append($("<tr>").append(
+        $("<th>").text("Coinbase tag"), $("<th class='text-right'>").text("Blocks"), $("<th>"))));
+      pools.unmapped.forEach(function (u) {
+        tb.append($("<tr>").append(
+          $("<td class='lbl-id'>").text(u.tag),
+          $("<td class='lbl-num text-right text-muted'>").text(u.blocks.toLocaleString("en-US")),
+          $("<td class='text-right text-nowrap'>").append(
+            $("<button type='button' class='btn btn-sm btn-info m-0'>").text("Name this").on("click", function () {
+              $("#plMatch").val(u.tag);
+              $("#plName").val("").trigger("focus");
+              poolInput();
+              $("html, body").animate({ scrollTop: $("#plForm").offset().top - 80 }, 200);
+            }))));
+      });
+      body.append($("<div class='table-responsive'>").append(t.append(tb)));
+    }
+    function refreshPools() {
+      post({ action: "pool_list" }).done(function (res) {
+        if (res.status !== "ok") { msg("#plErr", res.error); return; }
+        pools = res; renderPools(); renderUnmapped();
+      }).fail(function (xhr) { msg("#plErr", failed(xhr)); });
+    }
+    $("#plForm").on("submit", function (e) { e.preventDefault(); savePool(); });
+    $("#plMatch, #plName").on("input", function () { if ($("#plMatch").val() && $("#plName").val()) { poolInput(); } else { msg("#plErr", ""); } });
+
     refreshList();
+    refreshPools();
   });
   </script>
 <?php

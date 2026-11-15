@@ -100,6 +100,9 @@
           array_push($m,"<a class='blocklist-height ' href='".$settings["explorer_address"]."/block/?blockheight=".$blk->block_ix."' title='Navigate to block ".$blk->block_ix."'>".$blk->block_ix."</a>");
           // Hash
           array_push($m,"<a class='blocklist-hash primary-text mr-1' href='".$settings["explorer_address"]."/block/?blockhash=".$blk->_id."' title='Navigate to block $blk->_id'>" .$blk->_id."</a>".$rew_type.$or_tag.$algo_tag);
+          // Pool. The name is resolved per row from a map read once per request,
+          // so the column costs one small query however long the page is.
+          array_push($m, ui_poolCell(isset($blk->coinbase_tag) ? $blk->coinbase_tag : ""));
           // Confirmations
           array_push($m,"<span class='blocklist-confirmations badge badge-".$conf_class." h6 mb-0'>".$conf."</span>");
           // Block Size

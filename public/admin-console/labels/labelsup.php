@@ -19,6 +19,11 @@
 
     const LBL_MAX_TAGS = 10;
     const LBL_LIST_LIMIT = 1000;
+    const LBL_MAX_POOLS = 200;
+    // Blocks scanned for tags the operator has not named yet. One projected field
+    // off the block_ix index, and only when the Pools tab is open.
+    const LBL_POOL_SCAN = 2000;
+    const LBL_POOL_SUGGEST = 40;
 
     // raw POST value: labels are validated, not HTML-encoded, before they reach the database
     function lbl_post(string $name) : string {
@@ -55,6 +60,40 @@
     }
     function lbl_validId(string $id) : bool {
         return $id !== '' && strlen($id) <= 128 && !preg_match('/[\x00-\x1f\x7f]/', $id);
+    }
+
+    /* The pools an operator has named, newest edit first is not useful here -- the
+       list is short and read alphabetically, which is how mongo_getPools sorts. */
+    function lbl_pools() : array {
+        $out = [];
+        foreach (db_getPools() as $p) {
+            $out[] = [
+                'match'   => (string)$p->_id,
+                'name'    => isset($p->name) ? (string)$p->name : '',
+                'updated' => isset($p->updated_sec) ? (int)$p->updated_sec : 0,
+            ];
+        }
+        return $out;
+    }
+    /* The coinbase tags of recent blocks that no mapping claims, commonest first.
+       Without this the operator has to guess what their chain emits: the tags are
+       not on any public page until a pool is named, and the raw script is not in
+       the database at all. */
+    function lbl_unmappedTags() : array {
+        $counts = [];
+        foreach (db_getRecentCoinbaseTags(LBL_POOL_SCAN) as $b) {
+            $tag = isset($b->coinbase_tag) ? (string)$b->coinbase_tag : '';
+            if ($tag === '' || ui_poolName($tag) !== '') { continue; }
+            if (!isset($counts[$tag])) { $counts[$tag] = 0; }
+            $counts[$tag]++;
+        }
+        arsort($counts);
+        $out = [];
+        foreach ($counts as $tag => $n) {
+            if (count($out) >= LBL_POOL_SUGGEST) { break; }
+            $out[] = ['tag' => $tag, 'blocks' => $n];
+        }
+        return $out;
     }
 
     $action = lbl_post('action');
@@ -117,6 +156,38 @@
                     usort($rows, function ($x, $y) { return strcasecmp($x['tag'], $y['tag']) ?: $y['count'] <=> $x['count']; });
                     $res['tags'] = $rows;
                 }
+                break;
+
+            case 'pool_list':
+                $res = ['status' => 'ok', 'pools' => lbl_pools(), 'unmapped' => lbl_unmappedTags(),
+                        'scanned' => LBL_POOL_SCAN, 'max' => LBL_MAX_POOLS];
+                break;
+
+            case 'pool_set':
+                $match = lbl_post('match');
+                $name  = lbl_post('name');
+                if (($e = ui_poolMatchError($match)) !== '') { $res = lbl_error($e); break; }
+                if (($e = ui_labelError($name)) !== '')       { $res = lbl_error($e); break; }
+                /* Folded here and nowhere else: the key in the database is already
+                   lowercase, so matching a tag is one strpos with no per-row fold. */
+                $key = ui_poolKey($match);
+                $existing = lbl_pools();
+                $known = false;
+                foreach ($existing as $p) { if ($p['match'] === $key) { $known = true; break; } }
+                if (!$known && count($existing) >= LBL_MAX_POOLS) {
+                    $res = lbl_error('At most '.LBL_MAX_POOLS.' pools. Remove one first.');
+                    break;
+                }
+                db_setPool($key, $name);
+                $res = ['status' => 'ok', 'pools' => lbl_pools(),
+                        'message' => $known ? 'Pool updated' : 'Pool added'];
+                break;
+
+            case 'pool_delete':
+                $key = ui_poolKey(lbl_post('match'));
+                if ($key === '') { $res = lbl_error('Which pool?'); break; }
+                db_deletePool($key);
+                $res = ['status' => 'ok', 'pools' => lbl_pools(), 'message' => 'Pool removed'];
                 break;
 
             default:
