@@ -106,7 +106,8 @@ use WebSocket\Exception;
               $m = isset($p->_id)  ? (string)$p->_id  : '';
               $n = isset($p->name) ? (string)$p->name : '';
               if ($m === '' || $n === '') { continue; }
-              $map[] = ['match' => $m, 'name' => $n];
+              $map[] = ['match' => $m, 'name' => $n,
+                        'color_ix' => isset($p->color_ix) ? (int)$p->color_ix : null];
           }
       } catch (Throwable $e) {
           /* A page that shows a pool column is not a page about pools. If the
@@ -121,16 +122,140 @@ use WebSocket\Exception;
       return $map;
   }
 
-  // The pool this coinbase tag belongs to, or '' when none is mapped.
-  function ui_poolName($tag) : string {
+  // The mapped pool this coinbase tag belongs to, or null when none matches.
+  function ui_poolMatch($tag) {
       $tag = (string)$tag;
-      if ($tag === '') { return ''; }
+      if ($tag === '') { return null; }
       $hay = ui_labelKey($tag);
       foreach (ui_getPoolMap() as $p) {
-          if (strpos($hay, $p['match']) !== false) { return $p['name']; }
+          if (strpos($hay, $p['match']) !== false) { return $p; }
       }
-      return '';
+      return null;
   }
+
+  // The pool this coinbase tag belongs to, or '' when none is mapped.
+  function ui_poolName($tag) : string {
+      $p = ui_poolMatch($tag);
+      return is_null($p) ? '' : $p['name'];
+  }
+
+  /* --- Pool colours ---
+
+     A named pool gets a colour so a reader can pick it out of a long column
+     without reading every badge. The colour is recall, never identity: the name
+     is on the badge and in the chart legend, and two pools may share a colour,
+     so nothing asks anyone to tell pools apart by colour alone. That is not a
+     shortcut. Eight hues is the most that stays separable under protanopia and
+     deuteranopia, and no set of eight survives the all-pairs test that applies
+     when any two of them can sit side by side -- which is exactly a table
+     column. So the colour assists the name; it does not replace it.
+
+     The default eight are a categorical set: distinct hues, not the shades of
+     one. "chart_colors" is deliberately not reused for this -- it ships as a
+     single-hue ramp, right for ordered shares in a doughnut and useless for
+     telling one pool from another. An operator who wants their own set puts it
+     in "pool_colors". */
+  function ui_getPoolPalette() : array {
+      global $settings;
+      static $pal = null;
+      if (!is_null($pal)) { return $pal; }
+      $pal = array();
+      if (isset($settings['pool_colors']) && is_array($settings['pool_colors'])) {
+          foreach ($settings['pool_colors'] as $c) {
+              if (is_string($c) && ui_isCssColor($c)) { $pal[] = $c; }
+          }
+      }
+      if (count($pal) === 0) {
+          /* Eight hues, validated as a categorical palette against white: all
+             inside the lightness band, above the chroma floor, every one over
+             3:1 on the page, and the closest neighbouring pair still 7.7 apart
+             under simulated deuteranopia (23.3 for a full-colour reader).
+
+             They are darker than the categorical set they came from because a
+             badge puts text on top of the colour. A mark only has to be seen at
+             3:1; text on it has to be read at 4.5:1, and the undarkened blue
+             managed 4.52:1 with black and 4.36:1 with white -- so neither ink
+             was legible on it. Each hue is stepped down until white clears
+             4.5:1, and the order is then the one that keeps neighbouring slots
+             furthest apart; darkening alone had left two of them at 14.8, under
+             the 15 a full-colour reader needs. */
+          $pal = ['#ae5c7b', '#008300', '#2976d2', '#c1552b',
+                  '#15875e', '#d14342', '#6250d6', '#9f6c00'];
+      }
+      return $pal;
+  }
+
+  /* The colour slot a pool holds. Stored on the pool when it was named, so it
+     survives a rename and stays the same on every page. Pools named before this
+     existed have no slot, and fall back to a hash of the name -- stable, and
+     the same answer on every page, but free to collide with another pool. */
+  function ui_poolColor($name, $color_ix = null) : string {
+      $pal = ui_getPoolPalette();
+      $n   = count($pal);
+      if ($n === 0) { return ''; }
+      if (!is_null($color_ix) && (int)$color_ix >= 0) { return $pal[((int)$color_ix) % $n]; }
+      $name = (string)$name;
+      if ($name === '') { return ''; }
+      return $pal[crc32(ui_labelKey($name)) % $n];
+  }
+
+  /* Black or white, whichever the badge's own background can carry. Computed
+     rather than fixed, because the palette is an operator setting: a light
+     yellow needs dark text and the shipped default contains one.
+
+     Both contrast ratios are worked out and the better one wins, rather than
+     comparing luminance against the 0.179 crossover. The crossover is where the
+     two are equal in theory, but neither ink is pure -- the dark one is #0b0b0b
+     -- so near the middle it picks the wrong one. On the default palette's blue
+     it chose black at 4.46:1, just under the 4.5:1 that small text needs, where
+     white gives 4.71:1. */
+  function ui_poolInk(string $hex) : string {
+      $l = ui_srgbLuminance($hex);
+      if (is_null($l)) { return '#ffffff'; }
+      $dark  = ui_srgbLuminance('#0b0b0b');
+      $light = 1.0;
+      $vs_dark  = ($l + 0.05) / ($dark + 0.05);
+      $vs_light = ($light + 0.05) / ($l + 0.05);
+      return $vs_dark >= $vs_light ? '#0b0b0b' : '#ffffff';
+  }
+
+  /* sRGB relative luminance, the quantity WCAG contrast is built from, or null
+     when the colour cannot be measured. Hex and rgb()/rgba() are measured; a CSS
+     keyword is not, and its badge falls back to white text -- which the settings
+     templates say, because a keyword naming a pale colour would be the one way
+     to get an unreadable badge. */
+  function ui_srgbLuminance(string $color) {
+      $v = trim($color);
+      $rgb = null;
+      if (preg_match('/^rgba?\(\s*([0-9.]+)[\s,]+([0-9.]+)[\s,]+([0-9.]+)/i', $v, $m)) {
+          $rgb = [(float)$m[1], (float)$m[2], (float)$m[3]];
+      } else {
+          $h = ltrim($v, '#');
+          if (strlen($h) === 3) { $h = $h[0].$h[0].$h[1].$h[1].$h[2].$h[2]; }
+          if (strlen($h) === 8) { $h = substr($h, 0, 6); }   // #rrggbbaa
+          if (preg_match('/^[0-9a-fA-F]{6}$/', $h)) {
+              $rgb = [hexdec(substr($h, 0, 2)), hexdec(substr($h, 2, 2)), hexdec(substr($h, 4, 2))];
+          }
+      }
+      if (is_null($rgb)) { return null; }
+      $l = 0.0;
+      foreach ([0.2126, 0.7152, 0.0722] as $i => $w) {
+          $c = max(0.0, min(255.0, $rgb[$i])) / 255;
+          $l += $w * ($c <= 0.03928 ? $c / 12.92 : pow(($c + 0.055) / 1.055, 2.4));
+      }
+      return $l;
+  }
+
+  // style="" for a badge in this pool's colour, or '' when there is no palette
+  function ui_poolBadgeStyle(string $color) : string {
+      if ($color === '') { return ''; }
+      return " style='background-color:".h($color).";color:".h(ui_poolInk($color))."'";
+  }
+
+  /* The one grey that means "no pool here". Unnamed tags and untagged blocks
+     share it, in the table and in the chart, so the doughnut reads as how much
+     of the window is attributed and how much is still waiting for a name. */
+  function ui_poolGrey() : string { return '#aeada6'; }
 
   // The pool name, or the raw tag shortened to fit a cell, or '' for a block with
   // no tag at all. Callers that render HTML want ui_poolCell instead.
@@ -163,13 +288,15 @@ use WebSocket\Exception;
       foreach ((is_array($rows) || is_object($rows)) ? $rows : [] as $r) {
           if (!is_object($r)) { continue; }
           $tag   = isset($r->tag) ? (string)$r->tag : '';
-          $name  = ui_poolName($tag);
+          $p     = ui_poolMatch($tag);
+          $name  = is_null($p) ? '' : $p['name'];
           $named = ($name !== '');
           $key   = $named ? 'n:'.ui_labelKey($name) : 't:'.$tag;
           if (!isset($out[$key])) {
               $o = new stdClass();
               $o->label  = $named ? $name : ui_poolLabel($tag);
               $o->named  = $named;
+              $o->color  = $named ? ui_poolColor($name, $p['color_ix']) : '';
               $o->tag    = $tag;      // one example tag, for the hover
               $o->tags   = array();   // every tag that merged into this row
               $o->blocks = 0;
@@ -213,9 +340,11 @@ use WebSocket\Exception;
      which is also how an operator finds what to add on the Labels page. */
   function ui_poolCell($tag, string $badge_class = 'badge-info') : string {
       $tag  = preg_replace('/\p{Cc}/u', '', (string)$tag);   // never into an attribute
-      $name = ui_poolName($tag);
-      if ($name !== '') {
-          return "<span class='badge ".$badge_class."' title='".h($tag)."'>".h($name)."</span>";
+      $p    = ui_poolMatch($tag);
+      if (!is_null($p)) {
+          $style = ui_poolBadgeStyle(ui_poolColor($p['name'], $p['color_ix']));
+          $cls   = $style === '' ? ' '.$badge_class : '';   // the palette can be emptied
+          return "<span class='badge".$cls."'".$style." title='".h($tag)."'>".h($p['name'])."</span>";
       }
       if (trim($tag) === '') { return "<span class='grey-text'>&mdash;</span>"; }
       return "<span class='grey-text small' title='".h($tag)."'>".h(ui_poolLabel($tag))."</span>";

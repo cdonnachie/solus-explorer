@@ -232,6 +232,7 @@ to `bitshares.openledger.info`.
 | `nav_image` | `img/navback_hex_hd.jpg` | Side-menu background. |
 | `skin_colors` | shipped skin values | The skin's colour tokens, emitted as `:root` custom properties before the stylesheets. Every token is optional; set only what you change, with no CSS edit. Full list in `ui_getSkinTokenDefaults()` (`lib/explorerUi.php`). See [Creating a skin](#creating-a-skin). Invalid values are ignored and fall back to the default. |
 | `chart_colors`, `named_colors` | | Palettes used by charts. `chart_colors` is also published to CSS as `--chart-1` … `--chart-N`. `named_colors` is read by chart code only and does **not** set the skin — use `skin_colors` for that. |
+| `pool_colors` | *(eight hues)* | The colours mining pools are shown in. Optional; see **Pool colours** below. |
 | `amcharts_license_key` | `""` | Commercial amCharts 4 license key. Empty keeps the small amCharts logo on every chart, as the amCharts free license requires. Set it only if you hold a commercial amCharts 4 license; the footer then calls `am4core.addLicense()` before any chart is drawn. |
 | `is_oem` | false | Remove the Solus Explorer name from meta keywords and use the neutral side-menu background. |
 | `*_symbol` | FontAwesome classes | Icons for OP_RETURN, asset messages, dev fee, SPoW, masternode, DIP2, cold stake, airdrop, shield, MLC. |
@@ -268,6 +269,46 @@ Skin colours live in `settings.php`, not in CSS. `public/css/style-n.css` paints
    so a sub-folder needs no code change.
 3. Match `chart_colors` to the new palette so charts fit the skin. `chart_colors` is
    also published to CSS as `--chart-1` … `--chart-N`.
+4. Optionally set `pool_colors`. It is a separate list from `chart_colors` for a
+   reason — see below.
+
+### Pool colours
+
+A named mining pool is shown as a coloured badge on `/blocks/`, on each block page
+and in both tables on `/mining/`, where its slice of the share chart takes the same
+colour. Anything with no pool name — an unmatched tag, a block with no tag — is grey
+in all of them, so the chart reads as how much of the window is attributed.
+
+Leave `pool_colors` out and the explorer uses eight hues chosen to stay separable
+under the two common forms of colour blindness, with white text that clears WCAG AA
+on every one. To use your own:
+
+```php
+"pool_colors" => ["#2976d2", "#c1552b", "#15875e", "#9f6c00"],
+```
+
+Any CSS colour is accepted and an entry that is not one is dropped; an empty or
+missing list falls back to the default. Badge text is picked per colour, black or
+white, whichever the background carries better — so a light entry still reads.
+
+**Write them as hex or `rgb()`.** That choice of text colour is measured from the
+value, and a CSS keyword cannot be measured: a keyword naming a pale colour gets
+white text and will not be readable.
+
+**This is not `chart_colors`, and reusing that list is a mistake.** `chart_colors`
+ships as one hue in nine shades, which is right for ordered shares in a doughnut and
+useless for telling one pool from another.
+
+**Colour is a recall aid, not an identity.** Eight distinct hues is about the limit
+for colour-blind separability, and no set of eight survives the test that applies
+when any two can sit side by side — which a table column is. A pool's name is
+therefore always on the badge and in the chart legend, and nothing in the explorer
+asks a reader to tell two pools apart by colour alone. Keep that true in a custom
+list: more entries will not make colour safe to read on its own.
+
+A pool is given the lowest free slot in the list when it is first named, keeps it
+through a rename, and gives it up when deleted. Past the length of the list the
+slots wrap, so a ninth pool repeats the first one's colour.
 
 > **Two different "primary" colours.** `primary` is the brand blue used by
 > `.primary-color` and link hovers. `btn-primary` is the **pink** action-button accent,

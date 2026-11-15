@@ -133,7 +133,7 @@
       </div>
     </div>
     <h5 class="pt-2 pb-0">Mining pools</h5>
-    <p class="lbl-hint mb-3">A pool is named by the miner tag in its coinbase script, not by an address. That is the only way to attribute a pool that pays to a fresh address every block. Matching is case-insensitive and looks anywhere in the tag; where two patterns both match, the longer one wins, so order does not matter.</p>
+    <p class="lbl-hint mb-3">A pool is named by the miner tag in its coinbase script, not by an address. That is the only way to attribute a pool that pays to a fresh address every block. Matching is case-insensitive and looks anywhere in the tag; where two patterns both match, the longer one wins, so order does not matter. Each pool is given a colour when you name it and keeps it through a rename; past eight pools the colours repeat, which costs nothing because every badge carries its name.</p>
 
     <div class="card col-12 px-0 mb-4">
       <div class="card-header primary-color card-header-text py-2 d-flex justify-content-between align-items-center"><span class="h6 h6-responsive mb-0"><i class="fas fa-industry" aria-hidden="true"></i> POOL NAMES</span><small class="text-white-50 lbl-num" id="plCount"></small></div>
@@ -457,8 +457,13 @@
           act.append($("<button type='button' class='btn btn-sm btn-info m-0 mr-1'>").text("Edit").on("click", function () { editPool(p); }),
             $("<button type='button' class='btn btn-sm btn-link text-danger m-0'>").text("Remove").on("click", function () { poolPending = p.match; renderPools(); }));
         }
+        /* The badge is shown in the colour the public pages use, so naming a
+           pool and seeing what a visitor sees are the same act. */
+        var badge = $("<span class='badge mb-1'>").text(p.name);
+        if (p.color) { badge.css({ "background-color": p.color, "color": p.ink }); }
+        else { badge.addClass("badge-info"); }
         tb.append($("<tr>").append(
-          $("<td>").append($("<span class='badge badge-info mb-1'>").text(p.name)),
+          $("<td>").append(badge),
           $("<td class='lbl-id'>").text(p.match), act));
       });
       body.append($("<div class='table-responsive'>").append(t.append(tb)));

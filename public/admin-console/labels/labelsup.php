@@ -67,10 +67,17 @@
     function lbl_pools() : array {
         $out = [];
         foreach (db_getPools() as $p) {
+            $colour = ui_poolColor(isset($p->name) ? (string)$p->name : '',
+                                   isset($p->color_ix) ? (int)$p->color_ix : null);
             $out[] = [
                 'match'   => (string)$p->_id,
                 'name'    => isset($p->name) ? (string)$p->name : '',
                 'updated' => isset($p->updated_sec) ? (int)$p->updated_sec : 0,
+                /* The colour the public pages give this pool. Sent resolved rather
+                   than as a slot number so the admin page never has to carry a
+                   second copy of the palette. */
+                'color'   => $colour,
+                'ink'     => $colour === '' ? '' : ui_poolInk($colour),
             ];
         }
         return $out;

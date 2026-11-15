@@ -119,6 +119,15 @@
         "explorer_skin"     => "solus-skin",        // body class, keep as is
         "nav_image"         => "img/navback_hex_hd.jpg", // side menu background
         "chart_colors"      => ["#2f6c90", "#3f799c", "#4e86a8", "#5c93b5", "#6ba0c1", "#79adce", "#88bbda", "#96c9e7", "#a5d7f4"],
+        // Optional. The colours mining pools are shown in, on the pool table, the
+        // blocks list and each block page. Leave it out and a validated eight-hue
+        // set is used. Unlike "chart_colors", which is one hue in nine shades for
+        // ordered shares, these have to be told apart from each other -- so give
+        // distinct hues, and remember every badge also carries the pool's name.
+        // Use hex or rgb(): the badge's text colour is measured from the value, and
+        // a CSS keyword cannot be measured, so one naming a pale colour gets white
+        // text on it and will not be readable.
+        // "pool_colors"       => ["#ae5c7b", "#008300", "#2976d2", "#c1552b", "#15875e", "#d14342", "#6250d6", "#9f6c00"],
         "named_colors"      => ["danger" => "#d34f5c", "warning" => "#f5ca4a", "success" => "#42a759", "info" => "#79b8c2", "primary" => "#3d799c", "secondary" => "#6c757d", "light" => "#f8f9fa", "dark" => "#3c1c38"],
         "amcharts_license_key" => "",      // commercial amCharts 4 license key; empty keeps the free-license chart logo
 

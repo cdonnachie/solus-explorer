@@ -341,15 +341,23 @@
         if ($pool_total > 0) :
           /* Ten slices and a remainder. Past that the legend is longer than the
              chart and tells the reader less than the table beside it. */
-          $pc_labels = array(); $pc_values = array(); $pc_other = 0; $pc_i = 0;
+          $pc_labels = array(); $pc_values = array(); $pc_colors = array();
+          $pc_other = 0; $pc_i = 0;
           foreach ($pool_rows as $pr) {
             if ($pc_i < 10) {
               $pc_labels[] = ($pr->label === "") ? "Not tagged" : $pr->label;
               $pc_values[] = $pr->blocks;
+              /* A slice takes the colour of the badge beside it, so the chart and
+                 the table can be read against each other. Everything with no pool
+                 name takes the one grey, which turns the doughnut into how much of
+                 the window is attributed and how much is still waiting. */
+              $pc_colors[] = ($pr->color === "") ? ui_poolGrey() : $pr->color;
             } else { $pc_other += $pr->blocks; }
             $pc_i++;
           }
-          if ($pc_other > 0) { $pc_labels[] = "Other"; $pc_values[] = $pc_other; }
+          if ($pc_other > 0) {
+            $pc_labels[] = "Other"; $pc_values[] = $pc_other; $pc_colors[] = "#898781";
+          }
 
           /* The table is capped for the same reason, and it matters more here. Every
              tag no pattern matches stands as its own row, and a pool whose tag ends
@@ -396,7 +404,7 @@
                                    raw with the whole of it on hover, which is what
                                    tells the operator what to add on the Labels page. */
                                 if ($pr->named) {
-                                  echo "<span class='badge badge-info' title='".h(implode(", ", $pr->tags))."'>".h($pr->label)."</span>";
+                                  echo "<span class='badge'".ui_poolBadgeStyle($pr->color)." title='".h(implode(", ", $pr->tags))."'>".h($pr->label)."</span>";
                                 } else if ($pr->label === "") {
                                   echo "<span class='grey-text'>Not tagged</span>";
                                 } else {
@@ -695,9 +703,11 @@
         labels: <?php echo json_encode($pc_labels, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
         datasets: [{
           data: <?php echo json_encode($pc_values); ?>,
-          backgroundColor: [<?php echo getChartColors(count($pc_labels),1); ?>],
-          hoverBorderWidth: 1,
-          hoverBorderColor: [<?php echo getChartColors(count($pc_labels),1); ?>],
+          backgroundColor: <?php echo json_encode($pc_colors, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+          borderColor: '#ffffff',
+          borderWidth: 2,
+          hoverBorderWidth: 2,
+          hoverBorderColor: '#ffffff',
         }]
       },
       options: {

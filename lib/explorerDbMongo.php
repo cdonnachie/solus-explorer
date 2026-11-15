@@ -2817,10 +2817,26 @@ use Decimal\Decimal;
         $q = new MongoDB\Driver\Query([], mongo_webTimeLimit(['sort' => ['_id' => 1], 'limit' => 500]));
         return mongo_execDbQuery($q, "POOLS")->toArray();
     }
+    /* The colour slot is chosen once, when the pool is first named, and a later
+       rename leaves it alone -- so a pool keeps its colour on every page and
+       through an edit. The lowest slot no other pool holds, which makes the first
+       pools an operator names all different colours; deleting a pool frees its
+       slot for the next. Past the width of the palette the slots keep counting and
+       wrap, so a ninth pool repeats the first one's colour. Nothing reads colour
+       alone, so a repeat costs recall, not meaning. */
     function mongo_setPool(string $match, string $name) : bool {
         global $dbm, $settings;
+        $used = array();
+        foreach (mongo_getPools() as $p) {
+            if (isset($p->color_ix)) { $used[(int)$p->color_ix] = true; }
+        }
+        $slot = 0;
+        while (isset($used[$slot])) { $slot++; }
         $bulk = new MongoDB\Driver\BulkWrite();
-        $bulk->update(['_id' => $match], ['$set' => ['name' => $name, 'updated_sec' => time()]], ['upsert' => true]);
+        $bulk->update(['_id' => $match],
+                      ['$set' => ['name' => $name, 'updated_sec' => time()],
+                       '$setOnInsert' => ['color_ix' => $slot]],
+                      ['upsert' => true]);
         $r = $dbm->executeBulkWrite($settings['db_name'].".POOLS", $bulk);
         return ($r->getMatchedCount() + $r->getUpsertedCount()) >= 1;
     }

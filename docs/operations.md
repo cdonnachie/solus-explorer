@@ -218,6 +218,13 @@ hover — which is how an operator spots what is left to name. A block with no t
 a dash, and untagged blocks are counted as their own row rather than dropped, so the
 shares always add up.
 
+Naming a pool also gives it a colour, which it keeps through a rename and on every
+page; the share chart paints each slice to match its badge, and everything still
+unnamed is grey in both. The colour is there to be recognised, never to be read on
+its own — the name is on every badge and in the legend, and past eight pools the
+colours repeat. `pool_colors` in `settings.php` replaces the set; see
+**Pool colours** in [configuration.md](configuration.md).
+
 **Resolution happens when a page is drawn, not when the loader runs.** The cache stores
 raw tags only, so a name added or corrected here shows on the next page view. The
 *counts* behind the pool table still come from the mining cache and move with it.
