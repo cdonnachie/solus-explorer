@@ -395,6 +395,7 @@ use Decimal\Decimal;
     function db_getLabelGroups(int $limit) { return mongo_getLabelGroups($limit); }
     function db_getPools() { return mongo_getPools(); }
     function db_setPool(string $match, string $name) : bool { return mongo_setPool($match, $name); }
+    function db_setPoolColor(string $match, int $color_ix) : bool { return mongo_setPoolColor($match, $color_ix); }
     function db_deletePool(string $match) : bool { return mongo_deletePool($match); }
     function db_getRecentCoinbaseTags(int $blocks) { return mongo_getRecentCoinbaseTags($blocks); }
     function db_getAddressGroupByAddress($address) // from ADDRESSGROUPS

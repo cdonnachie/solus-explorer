@@ -62,6 +62,15 @@
         return $id !== '' && strlen($id) <= 128 && !preg_match('/[\x00-\x1f\x7f]/', $id);
     }
 
+    // The palette as the public pages see it, with the text colour of each
+    function lbl_palette() : array {
+        $out = [];
+        foreach (ui_getPoolPalette() as $i => $c) {
+            $out[] = ['ix' => $i, 'color' => $c, 'ink' => ui_poolInk($c)];
+        }
+        return $out;
+    }
+
     /* The pools an operator has named, newest edit first is not useful here -- the
        list is short and read alphabetically, which is how mongo_getPools sorts. */
     function lbl_pools() : array {
@@ -76,8 +85,9 @@
                 /* The colour the public pages give this pool. Sent resolved rather
                    than as a slot number so the admin page never has to carry a
                    second copy of the palette. */
-                'color'   => $colour,
-                'ink'     => $colour === '' ? '' : ui_poolInk($colour),
+                'color'    => $colour,
+                'ink'      => $colour === '' ? '' : ui_poolInk($colour),
+                'color_ix' => isset($p->color_ix) ? (int)$p->color_ix : null,
             ];
         }
         return $out;
@@ -167,7 +177,11 @@
 
             case 'pool_list':
                 $res = ['status' => 'ok', 'pools' => lbl_pools(), 'unmapped' => lbl_unmappedTags(),
-                        'scanned' => LBL_POOL_SCAN, 'max' => LBL_MAX_POOLS];
+                        'scanned' => LBL_POOL_SCAN, 'max' => LBL_MAX_POOLS,
+                        /* Sent so the page can draw the swatches without holding a
+                           second copy of the palette, which would drift from the
+                           operator's "pool_colors" the moment it changed. */
+                        'palette' => lbl_palette()];
                 break;
 
             case 'pool_set':
@@ -188,6 +202,21 @@
                 db_setPool($key, $name);
                 $res = ['status' => 'ok', 'pools' => lbl_pools(),
                         'message' => $known ? 'Pool updated' : 'Pool added'];
+                break;
+
+            /* A colour an operator chose, replacing the one handed out when the
+               pool was named. Pools may share a colour: with more pools than
+               colours they have to, and the name on the badge is what identifies
+               a pool either way. */
+            case 'pool_color':
+                $key = ui_poolKey(lbl_post('match'));
+                if ($key === '') { $res = lbl_error('Which pool?'); break; }
+                $raw = lbl_post('color_ix');
+                if (!preg_match('/^[0-9]{1,3}$/', $raw)) { $res = lbl_error('Pick a colour.'); break; }
+                $ix = (int)$raw;
+                if ($ix >= count(ui_getPoolPalette())) { $res = lbl_error('That colour is not in the palette.'); break; }
+                if (!db_setPoolColor($key, $ix)) { $res = lbl_error('No pool matches that pattern.'); break; }
+                $res = ['status' => 'ok', 'pools' => lbl_pools(), 'message' => 'Colour changed'];
                 break;
 
             case 'pool_delete':

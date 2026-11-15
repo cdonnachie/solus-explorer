@@ -308,7 +308,14 @@ list: more entries will not make colour safe to read on its own.
 
 A pool is given the lowest free slot in the list when it is first named, keeps it
 through a rename, and gives it up when deleted. Past the length of the list the
-slots wrap, so a ninth pool repeats the first one's colour.
+slots wrap, so a ninth pool repeats the first one's colour. The admin Labels page
+can move a pool to any slot — see **Mining pools** in
+[operations.md](operations.md).
+
+**The list is positional.** A pool stores the index it holds, not the colour, so
+replacing an entry recolours whichever pool is on that slot — which is the way to
+change one pool's colour for every deployment at once. *Removing* an entry shifts
+every slot after it and recolours several pools, so change entries in place.
 
 > **Two different "primary" colours.** `primary` is the brand blue used by
 > `.primary-color` and link hovers. `btn-primary` is the **pink** action-button accent,

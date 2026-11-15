@@ -2840,6 +2840,14 @@ use Decimal\Decimal;
         $r = $dbm->executeBulkWrite($settings['db_name'].".POOLS", $bulk);
         return ($r->getMatchedCount() + $r->getUpsertedCount()) >= 1;
     }
+    /* The slot an operator picked by hand. Not an upsert: a colour is only ever
+       set on a pool that exists, so a stale match pattern cannot create one. */
+    function mongo_setPoolColor(string $match, int $color_ix) : bool {
+        global $dbm, $settings;
+        $bulk = new MongoDB\Driver\BulkWrite();
+        $bulk->update(['_id' => $match], ['$set' => ['color_ix' => $color_ix, 'updated_sec' => time()]]);
+        return $dbm->executeBulkWrite($settings['db_name'].".POOLS", $bulk)->getMatchedCount() === 1;
+    }
     function mongo_deletePool(string $match) : bool {
         global $dbm, $settings;
         $bulk = new MongoDB\Driver\BulkWrite();

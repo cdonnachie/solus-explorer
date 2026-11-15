@@ -221,9 +221,22 @@ shares always add up.
 Naming a pool also gives it a colour, which it keeps through a rename and on every
 page; the share chart paints each slice to match its badge, and everything still
 unnamed is grey in both. The colour is there to be recognised, never to be read on
-its own — the name is on every badge and in the legend, and past eight pools the
-colours repeat. `pool_colors` in `settings.php` replaces the set; see
-**Pool colours** in [configuration.md](configuration.md).
+its own — the name is on every badge and in the legend, and past the width of the
+palette the colours repeat.
+
+**Click a pool's swatch to change its colour.** The one in use is ringed, and a
+colour another pool already holds is dimmed and says whose it is — sharing one is
+allowed, and with more pools than colours it has to be. The change shows on the
+next page view. This is worth doing when the automatic choice lands badly: the
+colour handed out first goes to the first pool named, not to the busiest one, so
+the pool with the largest share of the chart can end up with a colour you would
+not have picked for it.
+
+`pool_colors` in `settings.php` replaces the whole set; see **Pool colours** in
+[configuration.md](configuration.md). **That list is positional** — the colour a
+pool holds is an index into it, so replacing an entry recolours whichever pool
+holds that slot, while *removing* one shifts every slot after it and recolours
+several pools at once. Change entries in place.
 
 **Resolution happens when a page is drawn, not when the loader runs.** The cache stores
 raw tags only, so a name added or corrected here shows on the next page view. The

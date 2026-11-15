@@ -133,7 +133,7 @@
       </div>
     </div>
     <h5 class="pt-2 pb-0">Mining pools</h5>
-    <p class="lbl-hint mb-3">A pool is named by the miner tag in its coinbase script, not by an address. That is the only way to attribute a pool that pays to a fresh address every block. Matching is case-insensitive and looks anywhere in the tag; where two patterns both match, the longer one wins, so order does not matter. Each pool is given a colour when you name it and keeps it through a rename; past eight pools the colours repeat, which costs nothing because every badge carries its name.</p>
+    <p class="lbl-hint mb-3">A pool is named by the miner tag in its coinbase script, not by an address. That is the only way to attribute a pool that pays to a fresh address every block. Matching is case-insensitive and looks anywhere in the tag; where two patterns both match, the longer one wins, so order does not matter. Each pool is given a colour when you name it and keeps it through a rename; click the swatch to change it. Past the width of the palette the colours repeat, which costs nothing because every badge carries its name.</p>
 
     <div class="card col-12 px-0 mb-4">
       <div class="card-header primary-color card-header-text py-2 d-flex justify-content-between align-items-center"><span class="h6 h6-responsive mb-0"><i class="fas fa-industry" aria-hidden="true"></i> POOL NAMES</span><small class="text-white-50 lbl-num" id="plCount"></small></div>
@@ -392,7 +392,8 @@
     /* Pools are stored as pattern -> name and resolved on the public pages when they
        draw, so an edit here shows immediately. The pattern is folded to lower case by
        the server, which is why the list can show it verbatim. */
-    var pools = { pools: [], unmapped: [], scanned: 0, max: 0 }, poolPending = null;
+    var pools = { pools: [], unmapped: [], scanned: 0, max: 0, palette: [] },
+        poolPending = null, poolColorFor = null;
 
     function checkMatch(v) {
       if (v === "") return "Enter the text to match in the coinbase tag.";
@@ -432,6 +433,22 @@
         else { msg("#plErr", res.error); }
       }).fail(function (xhr) { msg("#plErr", failed(xhr)); });
     }
+    function savePoolColor(match, ix) {
+      post({ action: "pool_color", match: match, color_ix: ix }).done(function (res) {
+        if (res.status === "ok") { poolColorFor = null; toast(res.message); refreshPools(); }
+        else { msg("#plErr", res.error); }
+      }).fail(function (xhr) { msg("#plErr", failed(xhr)); });
+    }
+    /* One swatch. The colour is the only thing a reader sees, so the button
+       carries the pool's own name or the slot number for a screen reader --
+       colour is never the only way to tell these apart. */
+    function swatch(c, label) {
+      return $("<button type='button' class='btn p-0 m-0 mr-1 align-middle'>")
+        .attr({ "title": label, "aria-label": label })
+        .css({ "background-color": c, "width": "20px", "height": "20px",
+               "border": "1px solid rgba(0,0,0,.25)", "border-radius": "3px",
+               "min-width": "0", "box-shadow": "none" });
+    }
     function editPool(p) {
       $("#plMatch").val(p.match);
       $("#plName").val(p.name).trigger("focus");
@@ -446,7 +463,22 @@
       }
       var t = $("<table class='table table-sm mb-0'>"), tb = $("<tbody>");
       t.append($("<thead>").append($("<tr>").append(
-        $("<th>").text("Pool"), $("<th>").text("Matches tags containing"), $("<th>"))));
+        $("<th>").text("Pool"), $("<th>").text("Colour"),
+        $("<th>").text("Matches tags containing"), $("<th>"))));
+      /* Which pool holds each slot, so the picker can say who a colour is
+         already on. Sharing one is allowed -- with more pools than colours it
+         has to be -- but it should be a choice, not a surprise. */
+      var heldBy = {};
+      pools.pools.forEach(function (q) {
+        if (q.color_ix === null) { return; }
+        var k = q.color_ix % (pools.palette.length || 1);
+        (heldBy[k] = heldBy[k] || []).push(q);
+      });
+      // who else holds this slot -- the pool being edited never counts as a clash
+      function heldByOthers(ix, self) {
+        return (heldBy[ix] || []).filter(function (q) { return q.match !== self.match; })
+                                 .map(function (q) { return q.name; });
+      }
       pools.pools.forEach(function (p) {
         var act = $("<td class='text-right text-nowrap'>");
         if (poolPending === p.match) {
@@ -462,8 +494,40 @@
         var badge = $("<span class='badge mb-1'>").text(p.name);
         if (p.color) { badge.css({ "background-color": p.color, "color": p.ink }); }
         else { badge.addClass("badge-info"); }
+
+        /* Closed, the cell is one swatch of the colour this pool has now.
+           Opened, it is the whole palette -- the same shape as the remove
+           confirmation above, so the row never grows a second kind of state. */
+        var col = $("<td class='text-nowrap'>");
+        if (poolColorFor === p.match) {
+          pools.palette.forEach(function (c) {
+            var held = heldByOthers(c.ix, p);
+            var mine = p.color_ix !== null && (p.color_ix % pools.palette.length) === c.ix;
+            var sw = swatch(c.color,
+              "Colour " + (c.ix + 1) + (mine ? ", the one this pool has now" : "")
+                                     + (held.length ? ", also on " + held.join(", ") : ""));
+            /* The one in use is ringed rather than merely darker, and a colour
+               another pool already holds is dimmed -- so the ring and the dim
+               are never the only difference between two swatches. */
+            if (mine) {
+              sw.css("box-shadow", "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,.45)")
+                .attr("data-current", "1").addClass("ml-1");
+            } else if (held.length) {
+              sw.css("opacity", "0.55").attr("data-held", "1");
+            }
+            col.append(sw.on("click", function () { savePoolColor(p.match, c.ix); }));
+          });
+          col.append($("<button type='button' class='btn btn-sm btn-link m-0 p-0 ml-2 align-middle'>")
+            .text("Cancel").on("click", function () { poolColorFor = null; renderPools(); }));
+        } else if (p.color) {
+          col.append(swatch(p.color, "Change the colour of " + p.name)
+            .on("click", function () { poolColorFor = p.match; poolPending = null; renderPools(); }));
+        } else {
+          col.append($("<span class='lbl-hint'>").text("\u2014"));
+        }
+
         tb.append($("<tr>").append(
-          $("<td>").append(badge),
+          $("<td>").append(badge), col,
           $("<td class='lbl-id'>").text(p.match), act));
       });
       body.append($("<div class='table-responsive'>").append(t.append(tb)));
