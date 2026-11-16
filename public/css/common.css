@@ -185,3 +185,36 @@ html {
 html {
    overflow-y:scroll;
 }
+/* About page: the "Who runs this explorer" card.
+   A profile block rather than the label/value table the cards beside it use:
+   an avatar set inside a table row pushes its own text out of line with the
+   rows below it, and two columns across a full-width card leave a gap wide
+   enough to lose the eye in. */
+.operator-avatar {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  object-fit: contain;      /* a wordmark keeps its shape; a square avatar fills the box */
+  border-radius: 4px;
+}
+.operator-label {
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+.operator-name {
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+}
+.operator-bio {
+  max-width: 68ch;          /* a full-width card is far past a comfortable line */
+  margin-bottom: 0.75rem;
+}
+.operator-contacts > .operator-contact {
+  display: inline-block;    /* not flex gap: this has to hold up on old browsers */
+  margin-right: 1.75rem;
+}
+.operator-contacts > .operator-contact > .default-category {
+  margin-right: 0.4rem;
+}

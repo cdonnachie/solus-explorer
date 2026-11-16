@@ -143,52 +143,71 @@
               <span class="h4 h4-responsive"><i class="fas fa-user-shield mr-1" aria-hidden="true"></i> Who runs this explorer</span>
             </div>
 
-            <!--Card content-->
+            <!--Card content: a profile block, not a label/value table. An
+                 avatar placed inside a table row pushes its own text out of
+                 line with the rows beneath it, and a two-column table across a
+                 full-width card leaves a gap wide enough to lose the eye in. -->
             <div class="card-body text-left">
-              <?php if ($op_description !== "") : ?>
-              <p class="default-text"><?php echo h($op_description); ?></p>
-              <?php endif; ?>
-              <?php if ($op_name !== "" || $op_logo_src !== "") : ?>
-              <div class="row align-items-center">
-                <div class="flex-col col-md-4 default-category"><?php echo h($op_label); ?></div>
-                <div class="flex-col col-md-8 default-text"><?php
-                  $op_inner = "";
-                  if ($op_logo_src !== "") {
-                    /* No forced circular crop: operators set this to an avatar
-                       or to a wordmark, and rounding a wordmark makes an
-                       ellipse of it. The file is shown at its own aspect, 32px
-                       tall; an operator who wants a circle supplies one. */
-                    $op_inner .= '<img class="mr-2 align-middle" src="'.h($op_logo_src).'" height="32" alt="'.h($op_name !== "" ? $op_name : $op_label).'" loading="lazy">';
-                  }
-                  if ($op_name !== "") {
-                    $op_inner .= '<span class="align-middle">'.h($op_name).'</span>';
-                  }
-                  if ($op_url !== "") {
-                    echo '<a href="'.h($op_url).'" target="_blank" rel="noopener">'.$op_inner.'</a>';
-                  } else {
-                    echo $op_inner;
-                  }
-                ?></div>
-              </div>
-              <?php endif; ?>
-              <?php foreach ($op_contacts as $contact) :
+              <div class="media">
+                <?php if ($op_logo_src !== "") : ?>
+                <?php /* Decorative when a name follows it: the name carries the
+                         link and the text, so announcing the image as well says
+                         the same thing twice. With no name the avatar is the
+                         only identity there is, so it gets the label as alt. */ ?>
+                <?php if ($op_name !== "") : ?>
+                <img class="operator-avatar mr-3" src="<?php echo h($op_logo_src); ?>" alt="" loading="lazy">
+                <?php elseif ($op_url !== "") : ?>
+                <a class="mr-3" href="<?php echo h($op_url); ?>" target="_blank" rel="noopener"><img class="operator-avatar" src="<?php echo h($op_logo_src); ?>" alt="<?php echo h($op_label); ?>" loading="lazy"></a>
+                <?php else : ?>
+                <img class="operator-avatar mr-3" src="<?php echo h($op_logo_src); ?>" alt="<?php echo h($op_label); ?>" loading="lazy">
+                <?php endif; ?>
+                <?php endif; ?>
+
+                <div class="media-body">
+                  <?php if ($op_name !== "") : ?>
+                  <div class="default-category operator-label"><?php echo h($op_label); ?></div>
+                  <div class="operator-name"><?php
+                    if ($op_url !== "") {
+                      echo '<a href="'.h($op_url).'" target="_blank" rel="noopener">'.h($op_name).'</a>';
+                    } else {
+                      echo h($op_name);
+                    }
+                  ?></div>
+                  <?php endif; ?>
+
+                  <?php if ($op_description !== "") : ?>
+                  <p class="default-text operator-bio"><?php echo h($op_description); ?></p>
+                  <?php endif; ?>
+
+                  <?php
+                    $op_rows = [];
+                    foreach ($op_contacts as $contact) {
                       $c_label = trim((string)($contact["label"] ?? ""));
                       $c_text  = trim((string)($contact["text"] ?? ""));
                       $c_href  = trim((string)($contact["href"] ?? ""));
                       if ($c_text === "" && $c_href === "") { continue; }
                       if ($c_text === "") { $c_text = $c_href; }
-              ?>
-              <div class="row">
-                <div class="flex-col col-md-4 default-category"><?php echo h($c_label); ?></div>
-                <div class="flex-col col-md-8 default-text"><?php
-                  if ($c_href !== "") {
-                    echo '<a href="'.h($c_href).'" target="_blank" rel="noopener">'.h($c_text).'</a>';
-                  } else {
-                    echo h($c_text);
-                  }
-                ?></div>
+                      $op_rows[] = [$c_label, $c_text, $c_href];
+                    }
+                  ?>
+                  <?php if (count($op_rows) > 0) : ?>
+                  <div class="operator-contacts">
+                    <?php foreach ($op_rows as $row) : ?>
+                    <span class="operator-contact">
+                      <?php if ($row[0] !== "") : ?><span class="default-category"><?php echo h($row[0]); ?></span><?php endif; ?>
+                      <?php
+                        if ($row[2] !== "") {
+                          echo '<a href="'.h($row[2]).'" target="_blank" rel="noopener">'.h($row[1]).'</a>';
+                        } else {
+                          echo '<span class="default-text">'.h($row[1]).'</span>';
+                        }
+                      ?>
+                    </span>
+                    <?php endforeach; ?>
+                  </div>
+                  <?php endif; ?>
+                </div>
               </div>
-              <?php endforeach; ?>
             </div>
           </div>
         </div>
