@@ -170,7 +170,7 @@
         "operator_url"      => "",
         "operator_logo"     => "",          // path under public/, e.g. "img/operator.svg"; the name is shown when empty
         "operator_label"    => "Operated by",
-        "about_operator"    => "",          // About page: a sentence on who runs this explorer
+        "operator_description" => "",       // About page: a sentence on who runs this explorer
         "operator_contacts" => [            // About page contact rows: ["label" => "Discord", "text" => "name", "href" => "https://..."]
         ],
         "about_status"      => "",          // About page: this deployment's maintenance statement; an MIT licence line is shown when empty

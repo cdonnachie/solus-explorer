@@ -80,9 +80,9 @@
   $op_url      = trim((string)($settings["operator_url"] ?? ""));
   $op_label    = trim((string)($settings["operator_label"] ?? ""));
   if ($op_label === "") { $op_label = "Operated by"; }
-  $op_about    = trim((string)($settings["about_operator"] ?? ""));
+  $op_description    = trim((string)($settings["operator_description"] ?? ""));
   $op_contacts = isset($settings["operator_contacts"]) && is_array($settings["operator_contacts"]) ? $settings["operator_contacts"] : [];
-  $show_operator = ($op_name !== "" || $op_about !== "" || count($op_contacts) > 0);
+  $show_operator = ($op_name !== "" || $op_description !== "" || count($op_contacts) > 0);
 
   include_once __DIR__ . '/../includes/header.php';
   
@@ -137,8 +137,8 @@
 
             <!--Card content-->
             <div class="card-body text-left">
-              <?php if ($op_about !== "") : ?>
-              <p class="default-text"><?php echo h($op_about); ?></p>
+              <?php if ($op_description !== "") : ?>
+              <p class="default-text"><?php echo h($op_description); ?></p>
               <?php endif; ?>
               <?php if ($op_name !== "") : ?>
               <div class="row">

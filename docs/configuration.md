@@ -223,8 +223,8 @@ API are always listed: every deployment has them.
 
 Two more things on that page come from `settings.php` rather than the template,
 because they are claims about *your* instance and not about the software: the
-**Who runs this explorer** card (`about_operator`, `operator_contacts`, and the
-`operator_*` keys the side menu already uses) and the **Project status** line
+**Who runs this explorer** card (the `operator_*` keys, three of which the side
+menu already uses) and the **Project status** line
 (`about_status`). Leave `about_status` empty and the page states the licence and
 nothing else. It deliberately carries no support end date: a date that belongs to
 the upstream project reads to a visitor as "this explorer is closing".
@@ -270,7 +270,7 @@ to `bitshares.openledger.info`.
 | `copyright_message` | "Powered by Solus Explorer" | Footer HTML; `!#CY#!` becomes the year range. The misspelled key `copyright_mesage` found in old settings files is ignored. `copyright_enabled` toggles it. |
 | `social_buttons`, `custom_links` | `[]` | Menu entries `["icon" => "fab fa-x", "title" => ..., "href" => ...]`. `show_socials` toggles the block. |
 | `operator_name`, `operator_url`, `operator_logo`, `operator_label` | `""`, `""`, `""`, "Operated by" | Who runs this explorer. When a name or logo is set the side menu shows `operator_label` with the logo (path under `public/`) or the name, linked to `operator_url`. The name is also used for the `author` meta tag and the JSON-LD `provider` on the overview page. |
-| `about_operator`, `operator_contacts` | `""`, `[]` | Shown in the **Who runs this explorer** card on the About page, alongside `operator_label`/`operator_name`. `about_operator` is one sentence of prose; `operator_contacts` is a list of rows, `["label" => "Discord", "text" => "name shown", "href" => "https://..."]`. `href` may be omitted for a row that is not a link, and `text` falls back to `href`. With all of these empty and no `operator_name`, the card is not rendered. |
+| `operator_description`, `operator_contacts` | `""`, `[]` | Shown in the **Who runs this explorer** card on the About page, alongside `operator_label`/`operator_name`. `operator_description` is one sentence of prose; `operator_contacts` is a list of rows, `["label" => "Discord", "text" => "name shown", "href" => "https://..."]`. `href` may be omitted for a row that is not a link, and `text` falls back to `href`. With all of these empty and no `operator_name`, the card is not rendered. |
 | `about_status` | `""` | The **Project status** line on the About page. Empty shows only the licence: *"Solus Explorer is open-source software under the MIT License."* Write your own statement here if you want to tell visitors how long you intend to run the explorer. See [The About page](#the-about-page). |
 | `hosting_ref`, `wallet_ref`, `show_menu_reflinks` | `[]`, `[]`, false | Sponsor badges in the menu, `["name" => ..., "img_src" => "/img/...", "href" => "https://...", "text" => "Hosted by"]`. `href` is used as is; `img_src` is relative to `explorer_address`. Shown only when `show_menu_reflinks` is true. `show_donate` and `donate_wallets` in old settings files are not read. |
 | `overview_precision`, `default_precision` | 2, 8 | Decimal places on overview and detail pages. |
