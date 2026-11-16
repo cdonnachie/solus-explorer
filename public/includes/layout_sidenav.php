@@ -180,9 +180,16 @@
             <a href="<?php echo htmlspecialchars($tp["review_url"] ?? "https://www.trustpilot.com/"); ?>" target="_blank" rel="noopener">Trustpilot</a>
           </div>
         <?php endif; ?>
-        <?php if (!empty($settings["operator_name"]) || !empty($settings["operator_logo"])) : ?>
+        <?php /* The name, never the logo. ui_RenderMenuBadge shows the image
+                 instead of the name when it is given one, which is right for
+                 the sponsor badges below -- a sponsor is its logo -- and wrong
+                 here: an avatar at 25px in a dark strip says nothing a reader
+                 can act on, while the name is the whole point of the badge.
+                 operator_logo is read by the About page, which has room for
+                 both. */ ?>
+        <?php if (!empty($settings["operator_name"])) : ?>
           <div class="row align-items-end">
-            <?php ui_RenderMenuBadge($settings["operator_label"] ?? "Operated by", $settings["operator_name"] ?? "", $settings["operator_url"] ?? "", $settings["operator_logo"] ?? "", "25px", "col-12 pr-0 mr-0"); ?>
+            <?php ui_RenderMenuBadge($settings["operator_label"] ?? "Operated by", $settings["operator_name"], $settings["operator_url"] ?? "", "", "25px", "col-12 pr-0 mr-0"); ?>
           </div>
         <?php endif; ?>
         <?php if (!empty($settings["show_menu_reflinks"]) && (!empty($settings["hosting_ref"]) || !empty($settings["wallet_ref"]))) : ?>

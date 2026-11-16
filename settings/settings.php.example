@@ -160,7 +160,7 @@
         "wallet_ref"        => [],          // same shape as hosting_ref
         "operator_name"     => "",          // who runs this explorer: side menu badge and meta author
         "operator_url"      => "",
-        "operator_logo"     => "",          // path under public/, e.g. "img/operator.svg"; the name is shown when empty
+        "operator_logo"     => "",          // About page avatar, path under public/, e.g. "img/operator.webp"; the side menu always shows the name
         "operator_label"    => "Operated by",
         "operator_description" => "",       // About page: a sentence on who runs this explorer
         "operator_contacts" => [            // About page contact rows: ["label" => "Discord", "text" => "name", "href" => "https://..."]

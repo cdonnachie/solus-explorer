@@ -159,7 +159,16 @@ html {
   .solus-skin .side-nav-footer a {
     height:35px;
     line-height:20px;
-    padding-left:0;}
+    padding-left:0;
+    /* The side menu is white-on-dark throughout -- every collapsible link,
+       header and icon in it is #fff against the mask. This link had no colour
+       of its own, so it fell through to ".solus-skin a { color: var(--link) }",
+       a near-black meant for links on a white card. It was invisible on any
+       skin with a dark nav, and only ever looked fine because operators who
+       set a name also set a logo, which was drawn instead of the text. */
+    color:#fff;}
+    .solus-skin .side-nav-footer a:hover {
+      color:#aadeff;}
   .solus-skin .side-nav-footer p {
     font-size:75%;}
   .solus-skin .side-nav-footer div.col {
