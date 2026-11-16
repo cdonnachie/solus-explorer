@@ -80,9 +80,17 @@
   $op_url      = trim((string)($settings["operator_url"] ?? ""));
   $op_label    = trim((string)($settings["operator_label"] ?? ""));
   if ($op_label === "") { $op_label = "Operated by"; }
-  $op_description    = trim((string)($settings["operator_description"] ?? ""));
+  $op_description = trim((string)($settings["operator_description"] ?? ""));
+  $op_logo     = trim((string)($settings["operator_logo"] ?? ""));
   $op_contacts = isset($settings["operator_contacts"]) && is_array($settings["operator_contacts"]) ? $settings["operator_contacts"] : [];
-  $show_operator = ($op_name !== "" || $op_description !== "" || count($op_contacts) > 0);
+  $show_operator = ($op_name !== "" || $op_logo !== "" || $op_description !== "" || count($op_contacts) > 0);
+
+  /* The side menu shows the logo *instead of* the name, because a 25px strip at
+   * the bottom of the nav has room for one or the other. This card has room for
+   * both, and an avatar next to a name is the thing a reader recognises, so
+   * here they appear together. The path is relative to public/, the same as the
+   * menu badge reads it. */
+  $op_logo_src = $op_logo === "" ? "" : $settings["explorer_address"]."/".ltrim($op_logo, "/");
 
   include_once __DIR__ . '/../includes/header.php';
   
@@ -140,14 +148,25 @@
               <?php if ($op_description !== "") : ?>
               <p class="default-text"><?php echo h($op_description); ?></p>
               <?php endif; ?>
-              <?php if ($op_name !== "") : ?>
-              <div class="row">
+              <?php if ($op_name !== "" || $op_logo_src !== "") : ?>
+              <div class="row align-items-center">
                 <div class="flex-col col-md-4 default-category"><?php echo h($op_label); ?></div>
                 <div class="flex-col col-md-8 default-text"><?php
+                  $op_inner = "";
+                  if ($op_logo_src !== "") {
+                    /* No forced circular crop: operators set this to an avatar
+                       or to a wordmark, and rounding a wordmark makes an
+                       ellipse of it. The file is shown at its own aspect, 32px
+                       tall; an operator who wants a circle supplies one. */
+                    $op_inner .= '<img class="mr-2 align-middle" src="'.h($op_logo_src).'" height="32" alt="'.h($op_name !== "" ? $op_name : $op_label).'" loading="lazy">';
+                  }
+                  if ($op_name !== "") {
+                    $op_inner .= '<span class="align-middle">'.h($op_name).'</span>';
+                  }
                   if ($op_url !== "") {
-                    echo '<a href="'.h($op_url).'" target="_blank" rel="noopener">'.h($op_name).'</a>';
+                    echo '<a href="'.h($op_url).'" target="_blank" rel="noopener">'.$op_inner.'</a>';
                   } else {
-                    echo h($op_name);
+                    echo $op_inner;
                   }
                 ?></div>
               </div>
