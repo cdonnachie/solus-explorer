@@ -229,6 +229,14 @@ function ldr_coinbaseTag($hex, $max_len = 120){
     // rather than a guess, and anything that is not a plausible height push is left.
     $n = ord($raw[0]);
     if ($n >= 1 && $n <= 8 && strlen($raw) > $n) { $raw = substr($raw, 1 + $n); }
+    // Some miners separate the height from what follows with an OP_0, which pushes
+    // nothing: Neoxa's solo miners emit "03 <height> 00 04 <timestamp>". That one
+    // byte is enough to hide the timestamp push from the test below, and then the
+    // timestamp's own bytes form the run that is kept -- 0x49 0x3d 0x67 arrived as
+    // the pool tag "I=g". Measured on Neoxa, 4 of 35 blocks sampled across one
+    // 2,000-block window. Dropping an OP_0 cannot eat a tag: it carries no data,
+    // and 0x00 is not printable, so no tag can begin with it.
+    while ($raw !== '' && ord($raw[0]) === 0) { $raw = substr($raw, 1); }
     // Pool software conventionally follows the height with a four-byte timestamp
     // push. Those bytes change every block and can all land in the printable range:
     // block 1000's was 0x612f4851, which read as "QH/a". Drop that push when it is
