@@ -70,6 +70,38 @@ function ldr_abortBlock($block_ix, $block_hash, $description, $context = array()
     ldr_abort($description, $context, $block_ix, $block_hash, $outcome);
 }
 
+/**
+ * The daemon typed a vout as an asset script but sent no asset payload with it.
+ *
+ * An environment fault, not a data anomaly: the vout really is an asset script,
+ * but the node is not decoding the asset fields into its RPC output. A node
+ * built without asset RPC support reports the vout's type and nothing else, so
+ * every asset dereference downstream reads null.
+ *
+ * The loader must stop. Indexing past this records movements with a null amount
+ * and asset name, and the balances never reconcile again. It stopped before
+ * this existed too -- as an uncaught TypeError out of cdec() thousands of lines
+ * away, which says nothing about the daemon being the cause.
+ *
+ * The web tier must NOT stop, which is why this is not a bare ldr_abort():
+ * readVout() is also reached from explorerTx.php's getRpcTxVout() when /tx/
+ * renders a transaction that is not indexed yet. There a missing asset block
+ * costs one panel, not the page, and ldr_abort() would print "LOADER STOPPED"
+ * into the HTML and exit(1) mid-render. So in the web tier the vout is simply
+ * left without its asset detail.
+ */
+function ldr_assetDataMissing($vout_type, $missing_key, $vout_id){
+    if (PHP_SAPI != 'cli') { return; }
+    ldr_abort(
+        "Vout is typed '".$vout_type."' but the daemon reported no '".$missing_key."' data for it. "
+        ."The coin daemon is not decoding asset fields into its RPC output: a build with asset RPC "
+        ."support is required to index this chain. Check 'getrawtransaction <txid> 1' on a known "
+        ."asset transaction -- if the vout's scriptPubKey carries no '".$missing_key."' object, the "
+        ."daemon is the fault and no loader setting will work around it.",
+        array("vout" => (string)$vout_id, "vout_type" => (string)$vout_type)
+    );
+}
+
 /** Deliberate exit that is not a fault: stop file, lock held, subscription expired, run finished. */
 function ldr_quietExit($message = ''){
     $GLOBALS['ldr_stop_handled'] = true;
@@ -4108,10 +4140,12 @@ class Vout {
                         $this->asset->qualifier_type = $tx_vout->scriptPubKey->asset_data->qualifier_type; 
                     }
                     if ( isset($tx_vout->scriptPubKey->asset_data->amount) ) { 
-                        $this->asset->amount = @cdec($tx_vout->scriptPubKey->asset->amount); 
+                        $this->asset->amount = @cdec($tx_vout->scriptPubKey->asset_data->amount); 
                     } else {
                         $this->asset->amount = @cdec(0);
                     } 
+                } else {
+                    ldr_assetDataMissing($this->type, "asset_data", $this->_id);
                 }
             }
         }
@@ -4153,6 +4187,8 @@ class Vout {
                 if( isset($tx_vout->scriptPubKey->asset->reissuable)) { $this->asset->reissuable = $tx_vout->scriptPubKey->asset->reissuable ;}
                 if( isset($tx_vout->scriptPubKey->asset->units)) { $this->asset->units = $tx_vout->scriptPubKey->asset->units ;}
                 if( isset($tx_vout->scriptPubKey->asset->message)) { $this->asset->message = $tx_vout->scriptPubKey->asset->message ;}
+            } else {
+                ldr_assetDataMissing($this->type, "asset", $this->_id);
             }
         }
 
